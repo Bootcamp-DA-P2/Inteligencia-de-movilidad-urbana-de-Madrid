@@ -32,4 +32,4 @@ tzdata==2026.2
 wcwidth==0.8.2
 streamlit
 streamlit-carousel
-streamlit-option-menu
+streamlit-carousel-uui
