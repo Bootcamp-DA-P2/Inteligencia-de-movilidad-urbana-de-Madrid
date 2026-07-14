@@ -223,3 +223,6 @@ venv/
 
 # Datos
 data/
+
+# Base de datos
+database/
