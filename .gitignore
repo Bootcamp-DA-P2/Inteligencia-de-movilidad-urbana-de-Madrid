@@ -226,5 +226,6 @@ data/
 
 # Base de datos
 database/
+
+#Modelo
 models/
-*.pkl
