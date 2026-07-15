@@ -6,38 +6,36 @@ import sys
 # Forzamos que la salida se vea al instante
 sys.stdout.reconfigure(line_buffering=True)
 
-# URL oficial del archivo XML del Ayuntamiento de Madrid
 URL = "https://datos.madrid.es/dataset/202087-0-trafico-intensidad/resource/202087-0-trafico-intensidad/download/202087-0-trafico-intensidad.xml"
 
 def consultar_datos():
     print(f"\n--- Consultando datos a las {time.strftime('%H:%M:%S')} ---")
     try:
-        # Descargamos el contenido directamente a la memoria
         respuesta = requests.get(URL)
         respuesta.raise_for_status() 
         
-        # Procesamos el XML
         root = ET.fromstring(respuesta.content)
-        
-        # Inicializamos un contador para limitar la salida
         contador = 0
         
-        # Iteramos por cada punto de medida ('pm')
         for pm in root.findall('.//pm'):
-            # Obtenemos los valores de forma segura
-            codigo_elem = pm.find('codigo')
-            codigo = codigo_elem.text if codigo_elem is not None else "Desconocido"
+            # Función auxiliar para obtener texto de forma segura
+            def get_val(tag):
+                elem = pm.find(tag)
+                return elem.text if elem is not None else "N/A"
             
-            intensidad_elem = pm.find('intensidad')
-            intensidad = intensidad_elem.text if intensidad_elem is not None else "0"
+            # Obtenemos los nuevos campos
+            idelem = get_val('idelem')
+            descripcion = get_val('descripcion')
+            intensidad = get_val('intensidad')
+            ocupacion = get_val('ocupacion')
+            carga = get_val('carga')
+            nivel = get_val('nivelServicio')
             
-            velocidad_elem = pm.find('velocidad')
-            velocidad = velocidad_elem.text if velocidad_elem is not None else "0"
+            # Imprimimos los datos estructurados
+            print(f"ID: {idelem} | {descripcion}")
+            print(f"   -> Intensidad: {intensidad} | Ocupación: {ocupacion}% | Carga: {carga}% | Nivel Servicio: {nivel}")
+            print("-" * 50)
             
-            # Imprimimos los datos
-            print(f"Sensor ID: {codigo} | Velocidad: {velocidad} km/h | Intensidad: {intensidad} veh/5min")
-            
-            # Sumamos al contador y paramos tras 10 registros
             contador += 1
             if contador >= 10:
                 break
@@ -45,9 +43,8 @@ def consultar_datos():
         print("--- Actualización finalizada. Esperando 5 minutos... ---")
         
     except Exception as e:
-        print(f"Ha ocurrido un error durante la descarga o procesamiento: {e}")
+        print(f"Ha ocurrido un error: {e}")
 
-# Bucle infinito que mantiene el programa vivo
 while True:
     consultar_datos()
-    time.sleep(300) # 300 segundos = 5 minutos
+    time.sleep(300)
