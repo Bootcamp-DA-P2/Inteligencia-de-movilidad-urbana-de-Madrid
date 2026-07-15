@@ -23,7 +23,7 @@ def consultar_datos():
                 elem = pm.find(tag)
                 return elem.text if elem is not None else "N/A"
             
-            # Obtenemos los nuevos campos
+            # Obtenemos los campos
             idelem = get_val('idelem')
             descripcion = get_val('descripcion')
             intensidad = get_val('intensidad')
@@ -31,7 +31,7 @@ def consultar_datos():
             carga = get_val('carga')
             nivel = get_val('nivelServicio')
             
-            # Imprimimos los datos estructurados
+            # Imprimimos los datos estructurados en consola
             print(f"ID: {idelem} | {descripcion}")
             print(f"   -> Intensidad: {intensidad} | Ocupación: {ocupacion}% | Carga: {carga}% | Nivel Servicio: {nivel}")
             print("-" * 50)
@@ -47,4 +47,4 @@ def consultar_datos():
 
 while True:
     consultar_datos()
-    time.sleep(300)
+    time.sleep(300) # Espera 5 minutos
