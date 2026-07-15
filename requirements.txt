@@ -30,3 +30,12 @@ traitlets==5.15.1
 typing_extensions==4.16.0
 tzdata==2026.2
 wcwidth==0.8.2
+streamlit
+streamlit-carousel-uui
+python-dotenv
+requests
+django==6.0.2
+djangorestframework==3.16.1
+sqlparse==0.5.5
+djangorestframework==3.16.1
+djangorestframework-simplejwt==5.5.1
