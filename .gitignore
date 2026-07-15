@@ -226,3 +226,5 @@ data/
 
 # Base de datos
 database/
+models/
+*.pkl
