@@ -12,6 +12,18 @@ El repositorio incluye un **dashboard interactivo** (desarrollado en Power BI pa
 * **Aplicación Streamlit:** Interfaz web para consultar datos procesados con un sistema de autenticación de usuarios.
 * **Procesamiento de Datos:** Pipeline robusto utilizando **DuckDB** y **Polars** para la transformación y consolidación de grandes volúmenes de datos en formato Parquet, optimizando el rendimiento.
 
+## Tecnologías Utilizadas
+* **Lenguaje:** Python 3.12+
+* **Procesamiento de Datos:** Polars, DuckDB, Pandas
+* **Visualización:** Power BI
+* **Web Framework:** Streamlit
+* **Formato de Almacenamiento:** Apache Parquet
+
+## Resultados Destacados
+* **Dataset:** Análisis basado en una muestra representativa de 5,088 sensores.
+* **Calidad:** 99.4% de calidad media en los datos procesados.
+* **Insights:** Identificación de patrones de tráfico laboral (lunes-viernes) frente al fin de semana, con picos vespertinos sostenidos entre las 14:00h y las 20:00h en distritos clave como Retiro, Salamanca y Arganzuela.
+
 ## Arquitectura del Proyecto
 
 ```text
@@ -26,15 +38,4 @@ El repositorio incluye un **dashboard interactivo** (desarrollado en Power BI pa
 ├── README.md
 └── requirements.txt
 
-## Tecnologías Utilizadas
-* **Lenguaje:** Python 3.12+
-* **Procesamiento de Datos:** Polars, DuckDB, Pandas
-* **Visualización:** Power BI
-* **Web Framework:** Streamlit
-* **Formato de Almacenamiento:** Apache Parquet
-
-## Resultados Destacados
-* **Dataset:** Análisis basado en una muestra representativa de 5,088 sensores.
-* **Calidad:** 99.4% de calidad media en los datos procesados.
-* **Insights:** Identificación de patrones de tráfico laboral (lunes-viernes) frente al fin de semana, con picos vespertinos sostenidos entre las 14:00h y las 20:00h en distritos clave como Retiro, Salamanca y Arganzuela.
 
