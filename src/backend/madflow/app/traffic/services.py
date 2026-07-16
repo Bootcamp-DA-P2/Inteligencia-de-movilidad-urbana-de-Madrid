@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 import joblib
 import pandas as pd
+import duckdb
 
 # src/backend/madflow/app/traffic/services.py
 SRC_DIR = Path(__file__).resolve().parents[4]      # .../src
@@ -13,6 +14,7 @@ if str(SRC_DIR) not in sys.path:
 from etl.features import construir_fila_features
 
 MODELO_PATH = PROJECT_ROOT / "models" / "trafico.pkl"
+DB_PATH = PROJECT_ROOT / "database" / "trafico.duckdb"
 CATEGORIAS_TIPO_ELEM = ["other", "URB", "M30"]
 
 _modelo = None
@@ -38,3 +40,28 @@ def predecir_sensor(id_sensor: int) -> dict:
         "campos_imputados": list(imputados.keys()),
         "confiable": len(imputados) == 0,
     }
+
+# Districto
+def obtener_sensores_por_distrito(id_distrito: int) -> list[dict]:
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+    resultado = con.execute(
+        """
+        SELECT id_sensor, cod_cent, nombre_norm, latitud, longitud
+        FROM dim_sensor
+        WHERE distrito = ?
+        ORDER BY id_sensor
+        """,
+        [id_distrito]
+    ).fetchall()
+    con.close()
+
+    return [
+        {
+            "id_sensor": fila[0],
+            "cod_cent": fila[1],
+            "nombre_norm": fila[2],
+            "latitud": fila[3],
+            "longitud": fila[4],
+        }
+        for fila in resultado
+    ]
