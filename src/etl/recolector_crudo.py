@@ -42,9 +42,21 @@ def consultar_y_guardar_crudo():
             ocupacion DOUBLE, carga DOUBLE, velocidad_media DOUBLE, error VARCHAR
         )
     """)
-    con.execute("INSERT INTO raw_live SELECT * FROM df")
+
+    filas_antes = con.execute("SELECT COUNT(*) FROM raw_live").fetchone()[0]
+
+    con.execute("""
+        INSERT INTO raw_live
+        SELECT df.* FROM df
+        WHERE NOT EXISTS (
+            SELECT 1 FROM raw_live r
+            WHERE r.id_sensor = df.id_sensor AND r.fecha = df.fecha
+        )
+    """)
+    
+    filas_despues = con.execute("SELECT COUNT(*) FROM raw_live").fetchone()[0]
     con.close()
-    print(f"Guardados {len(df)} registros crudos ({fecha})")
+    print(f"Insertados {filas_despues - filas_antes} registros nuevos de {len(df)} recibidos ({fecha})")
 
 if __name__ == "__main__":
     consultar_y_guardar_crudo()

@@ -1,7 +1,9 @@
 import duckdb
 from pathlib import Path
 
-DB_PATH = Path("database/trafico.duckdb")
+ROOT = Path(__file__).resolve().parents[2]
+DB_PATH = ROOT / "database" / "trafico.duckdb"
+
 
 def agregar_ultima_hora():
     con = duckdb.connect(str(DB_PATH))
@@ -9,7 +11,7 @@ def agregar_ultima_hora():
     con.execute("""
         CREATE TABLE IF NOT EXISTS fact_trafico_hora_live AS
         SELECT * FROM fact_trafico_hora WHERE 1=0
-    """)  
+    """)
 
     con.execute("""
         INSERT INTO fact_trafico_hora_live
@@ -18,8 +20,8 @@ def agregar_ultima_hora():
             FROM raw_live r
             JOIN dim_sensor s ON r.id_sensor = s.id_sensor
             WHERE r.error <> 'S'
-            AND r.fecha >= date_trunc('hour', now() - INTERVAL 1 HOUR)
-            AND r.fecha <  date_trunc('hour', now())
+              AND r.fecha >= date_trunc('hour', now() - INTERVAL 1 HOUR)
+              AND r.fecha <  date_trunc('hour', now())
         ),
         trafico_hora AS (
             SELECT
@@ -48,8 +50,16 @@ def agregar_ultima_hora():
             num_mediciones, num_error_E, porcentaje_calidad
         FROM trafico_hora
     """)
+
+    filas_insertadas = con.execute("""
+        SELECT COUNT(*) FROM fact_trafico_hora_live
+        WHERE id_fecha = CAST(date_trunc('hour', now() - INTERVAL 1 HOUR) AS DATE)
+          AND hora = EXTRACT(HOUR FROM date_trunc('hour', now() - INTERVAL 1 HOUR))
+    """).fetchone()[0]
+
     con.close()
-    print("Hora agregada e insertada en fact_trafico_hora_live")
+    print(f"Hora agregada e insertada en fact_trafico_hora_live ({filas_insertadas} sensores)")
+
 
 if __name__ == "__main__":
     agregar_ultima_hora()

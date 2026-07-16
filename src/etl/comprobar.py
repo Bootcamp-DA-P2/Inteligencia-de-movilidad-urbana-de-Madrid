@@ -1,16 +1,15 @@
-from features import construir_fila_features
-import joblib
-import pandas as pd
+import duckdb
+from pathlib import Path
 
-fila, imputados = construir_fila_features(9841)
+ROOT = Path(__file__).resolve().parents[2]
+DB_PATH = ROOT / "database" / "trafico.duckdb"
 
-modelo = joblib.load("models/trafico.pkl")
-
-X = fila.to_pandas()
-
-# Debe coincidir EXACTAMENTE con las categorías vistas en entrenamiento
-X["tipo_elem"] = pd.Categorical(X["tipo_elem"], categories=["URB", "M30", "C30"])
-
-prediccion = modelo.predict(X)
-print("\nPredicción:", prediccion[0])
-
+con = duckdb.connect(str(DB_PATH), read_only=True)
+con.sql("""
+    SELECT id_sensor, fecha, COUNT(*) AS veces
+    FROM raw_live
+    GROUP BY id_sensor, fecha
+    HAVING COUNT(*) > 1
+""").show()
+con.close()
+print("Duplicados eliminados de raw_live")
