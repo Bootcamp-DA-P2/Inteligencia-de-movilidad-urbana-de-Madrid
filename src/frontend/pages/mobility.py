@@ -23,12 +23,11 @@ id_distrito = st.selectbox(
     format_func=lambda x: f"{x} - {DISTRITOS[x]}",
 )
 
-# Si cambia el distrito, se olvida el sensor elegido antes
 if "distrito_anterior" not in st.session_state:
     st.session_state.distrito_anterior = id_distrito
 if st.session_state.distrito_anterior != id_distrito:
-    st.session_state.pop("id_sensor_click", None)
     st.session_state.pop("selectbox_sensor", None)
+    st.session_state.pop("click_pendiente", None)
     st.session_state.distrito_anterior = id_distrito
 
 id_sensor_seleccionado = None
@@ -44,21 +43,45 @@ if id_distrito:
         if not sensores:
             st.warning("Este distrito no tiene sensores disponibles.")
         else:
-            st.write(f"**{len(sensores)} sensores encontrados en {DISTRITOS[id_distrito]}. Haz clic en un punto del mapa para elegirlo:**")
+            st.write(f"**{len(sensores)} sensores encontrados en {DISTRITOS[id_distrito]}. Haz clic en un punto del mapa o elige de la lista:**")
 
             df = pd.DataFrame(sensores)
             df["latitud"] = pd.to_numeric(df["latitud"], errors="coerce")
             df["longitud"] = pd.to_numeric(df["longitud"], errors="coerce")
             df = df.dropna(subset=["latitud", "longitud"])
 
-            # sensor ya elegido por clic previo (si lo hay)
-            id_click = st.session_state.get("id_sensor_click")
+            df["nombre_hover"] = df["nombre_calle"].fillna(df["nombre_norm"]).fillna("Sin nombre")
+
+            def nombre_mostrar(s: dict) -> str:
+                nombre = s["nombre_calle"] or s["nombre_norm"] or f"Sensor {s['id_sensor']}"
+                return f'{nombre.capitalize()} (#{s["id_sensor"]})'
+
+            opciones_sensor = {
+                s["id_sensor"]: nombre_mostrar(s)
+                for s in sensores
+            }
+            ids_disponibles = list(opciones_sensor.keys())
+
+            # Si hubo un clic pendiente del mapa, aplícalo ANTES de crear el widget
+            if "click_pendiente" in st.session_state:
+                st.session_state.selectbox_sensor = st.session_state.pop("click_pendiente")
+
+            if st.session_state.get("selectbox_sensor") not in ids_disponibles:
+                st.session_state.pop("selectbox_sensor", None)
+
+            id_sensor_seleccionado = st.selectbox(
+                "Sensor elegido (o cámbialo aquí)",
+                options=ids_disponibles,
+                format_func=lambda x: opciones_sensor[x],
+                key="selectbox_sensor",
+            )
+
+            id_click = id_sensor_seleccionado
 
             df["seleccionado"] = df["id_sensor"] == id_click
             df["tamano"] = df["seleccionado"].map({True: 22, False: 10})
             df["color"] = df["seleccionado"].map({True: "Seleccionado", False: "Sensor"})
 
-            # --- Calcular centro y zoom automático según la dispersión de los sensores ---
             lat_min, lat_max = df["latitud"].min(), df["latitud"].max()
             lon_min, lon_max = df["longitud"].min(), df["longitud"].max()
 
@@ -89,8 +112,8 @@ if id_distrito:
                 size="tamano",
                 size_max=22,
                 custom_data=["id_sensor"],
-                hover_name="id_sensor",
-                hover_data={"cod_cent": True, "nombre_norm": True, "latitud": False, "longitud": False, "tamano": False, "color": False},
+                hover_name="nombre_hover",
+                hover_data={"id_sensor": True, "cod_cent": True, "latitud": False, "longitud": False, "tamano": False, "color": False},
                 color_discrete_map={"Sensor": "#1f77b4", "Seleccionado": "#e63946"},
                 center={"lat": lat_centro, "lon": lon_centro},
                 zoom=zoom,
@@ -110,40 +133,15 @@ if id_distrito:
                 key="mapa_sensores",
             )
 
-            # Si hubo clic nuevo, actualiza el sensor elegido y refresca
             puntos = evento["selection"]["points"] if evento and "selection" in evento else []
             if puntos:
                 nuevo_id = puntos[0]["customdata"][0]
                 if nuevo_id != id_click:
-                    st.session_state.id_sensor_click = nuevo_id
-                    st.session_state.selectbox_sensor = nuevo_id
+                    st.session_state.click_pendiente = nuevo_id
                     st.rerun()
-
-            # --- Desplegable como alternativa/confirmación ---
-            #opciones_sensor = {
-            #    s["id_sensor"]: f'Sensor {s["id_sensor"]} ({s["cod_cent"]})'
-            #    for s in sensores
-            #}
-            opciones_sensor = {
-                s["id_sensor"]: f'{(s["nombre_calle"] or s["nombre_norm"]).capitalize()} (#{s["id_sensor"]})'
-                for s in sensores
-            }
-            ids_disponibles = list(opciones_sensor.keys())
-
-            id_sensor_seleccionado = st.selectbox(
-                "Sensor elegido (o cámbialo aquí)",
-                options=ids_disponibles,
-                format_func=lambda x: opciones_sensor[x],
-                key="selectbox_sensor",
-            )
-
-            # si el usuario cambia el desplegable en vez del mapa, sincronizamos
-            if id_sensor_seleccionado != id_click:
-                st.session_state.id_sensor_click = id_sensor_seleccionado
 
 st.divider()
 
-# --- Paso 3: predecir el sensor elegido ---
 st.subheader("Predicción")
 
 if id_sensor_seleccionado:
