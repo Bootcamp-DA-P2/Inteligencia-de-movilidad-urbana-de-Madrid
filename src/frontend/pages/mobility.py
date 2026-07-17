@@ -47,6 +47,9 @@ if id_distrito:
             st.write(f"**{len(sensores)} sensores encontrados en {DISTRITOS[id_distrito]}. Haz clic en un punto del mapa para elegirlo:**")
 
             df = pd.DataFrame(sensores)
+            df["latitud"] = pd.to_numeric(df["latitud"], errors="coerce")
+            df["longitud"] = pd.to_numeric(df["longitud"], errors="coerce")
+            df = df.dropna(subset=["latitud", "longitud"])
 
             # sensor ya elegido por clic previo (si lo hay)
             id_click = st.session_state.get("id_sensor_click")
@@ -122,7 +125,7 @@ if id_distrito:
             #    for s in sensores
             #}
             opciones_sensor = {
-                s["id_sensor"]: f'{s["nombre_norm"].capitalize()} (#{s["id_sensor"]})'
+                s["id_sensor"]: f'{(s["nombre_calle"] or s["nombre_norm"]).capitalize()} (#{s["id_sensor"]})'
                 for s in sensores
             }
             ids_disponibles = list(opciones_sensor.keys())

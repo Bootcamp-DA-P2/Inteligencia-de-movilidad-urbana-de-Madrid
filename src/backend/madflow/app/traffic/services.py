@@ -46,7 +46,7 @@ def obtener_sensores_por_distrito(id_distrito: int) -> list[dict]:
     con = duckdb.connect(str(DB_PATH), read_only=True)
     resultado = con.execute(
         """
-        SELECT id_sensor, cod_cent, nombre_norm, latitud, longitud
+        SELECT id_sensor, cod_cent, nombre_norm, nombre_calle, latitud, longitud
         FROM dim_sensor
         WHERE distrito = ?
         ORDER BY id_sensor
@@ -60,8 +60,9 @@ def obtener_sensores_por_distrito(id_distrito: int) -> list[dict]:
             "id_sensor": fila[0],
             "cod_cent": fila[1],
             "nombre_norm": fila[2],
-            "latitud": fila[3],
-            "longitud": fila[4],
+            "nombre_calle": fila[3],
+            "latitud": fila[4],
+            "longitud": fila[5],
         }
         for fila in resultado
     ]
