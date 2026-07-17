@@ -139,6 +139,16 @@ if id_distrito:
                 mapbox_style="open-street-map",
                 margin={"r": 0, "t": 0, "l": 0, "b": 0},
                 legend_title_text="",
+                # --- Leyenda movida a arriba a la izquierda y con texto en negro ---
+                legend=dict(
+                    orientation="v",
+                    yanchor="top",
+                    y=0.98,
+                    xanchor="left",
+                    x=0.02,
+                    bgcolor="rgba(255, 255, 255, 0.6)",
+                    font=dict(color="black")
+                )
             )
 
             evento = st.plotly_chart(

@@ -67,6 +67,7 @@ else:
         "Sobre Nosotros": [
             st.Page("pages/about_us.py", title="Sobre Nosotros", icon="🙋🏻")
         ]
+
     }
 
     pg = st.navigation(pages)
