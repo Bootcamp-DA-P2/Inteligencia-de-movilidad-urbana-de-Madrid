@@ -14,6 +14,11 @@ DISTRITOS = {
     21: "Barajas",
 }
 
+
+def marcar_seleccion_activa():
+    st.session_state.seleccion_activa = True
+
+
 # --- elegir distrito ---
 st.subheader("Buscar sensor por distrito")
 
@@ -28,6 +33,7 @@ if "distrito_anterior" not in st.session_state:
 if st.session_state.distrito_anterior != id_distrito:
     st.session_state.pop("selectbox_sensor", None)
     st.session_state.pop("click_pendiente", None)
+    st.session_state.seleccion_activa = False
     st.session_state.distrito_anterior = id_distrito
 
 id_sensor_seleccionado = None
@@ -74,13 +80,19 @@ if id_distrito:
                 options=ids_disponibles,
                 format_func=lambda x: opciones_sensor[x],
                 key="selectbox_sensor",
+                on_change=marcar_seleccion_activa,
             )
 
             id_click = id_sensor_seleccionado
 
             df["seleccionado"] = df["id_sensor"] == id_click
+
+            if st.session_state.get("seleccion_activa"):
+                df["color"] = df["seleccionado"].map({True: "Seleccionado", False: "No elegido"})
+            else:
+                df["color"] = "Sensor"
+
             df["tamano"] = df["seleccionado"].map({True: 22, False: 10})
-            df["color"] = df["seleccionado"].map({True: "Seleccionado", False: "Sensor"})
 
             lat_min, lat_max = df["latitud"].min(), df["latitud"].max()
             lon_min, lon_max = df["longitud"].min(), df["longitud"].max()
@@ -114,7 +126,11 @@ if id_distrito:
                 custom_data=["id_sensor"],
                 hover_name="nombre_hover",
                 hover_data={"id_sensor": True, "cod_cent": True, "latitud": False, "longitud": False, "tamano": False, "color": False},
-                color_discrete_map={"Sensor": "#1f77b4", "Seleccionado": "#e63946"},
+                color_discrete_map={
+                    "Sensor": "#1f77b4",       # todos azules, sin selección
+                    "No elegido": "#9e9e9e",   # gris, cuando hay selección pero no es este
+                    "Seleccionado": "#e63946", # rojo, el elegido
+                },
                 center={"lat": lat_centro, "lon": lon_centro},
                 zoom=zoom,
                 height=500,
@@ -138,6 +154,7 @@ if id_distrito:
                 nuevo_id = puntos[0]["customdata"][0]
                 if nuevo_id != id_click:
                     st.session_state.click_pendiente = nuevo_id
+                    st.session_state.seleccion_activa = True
                     st.rerun()
 
 st.divider()
