@@ -66,7 +66,10 @@ else:
         ],
         "Sobre Nosotros": [
             st.Page("pages/about_us.py", title="Sobre Nosotros", icon="🙋🏻")
-        ]
+        ],
+        "Dashboard": [
+            st.Page("pages/dashboard.py", title="Dashboard histórico", icon="📊")
+        ],
 
     }
 

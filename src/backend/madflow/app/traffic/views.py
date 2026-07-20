@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
-from .services import predecir_sensor, obtener_sensores_por_distrito
+from .services import predecir_sensor, obtener_sensores_por_distrito, obtener_evolucion_sensor, obtener_patron_horario_m30, obtener_patron_horario_distrito, obtener_patron_semanal_distrito, obtener_ranking_distritos_historico
 import datetime
 
 class TrafficPredictView(APIView):
@@ -38,3 +38,51 @@ class TrafficSensoresPorDistritoView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         return Response({"id_distrito": id_distrito, "sensores": sensores}, status=status.HTTP_200_OK)
+    
+
+class EvolucionSensorView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, id_sensor):
+        fecha_inicio = request.query_params.get("desde", "2025-07-01")
+        fecha_fin = request.query_params.get("hasta", "2026-06-30")
+        return Response(
+            obtener_evolucion_sensor(int(id_sensor), fecha_inicio, fecha_fin),
+            status=status.HTTP_200_OK,
+        )
+
+
+class PatronHorarioDistritoView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, id_distrito):
+        fecha_inicio = request.query_params.get("desde", "2025-07-01")
+        fecha_fin = request.query_params.get("hasta", "2026-06-30")
+        return Response(
+            obtener_patron_horario_distrito(int(id_distrito), fecha_inicio, fecha_fin),
+            status=status.HTTP_200_OK,
+        )
+
+
+class PatronSemanalDistritoView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, id_distrito):
+        fecha_inicio = request.query_params.get("desde", "2025-07-01")
+        fecha_fin = request.query_params.get("hasta", "2026-06-30")
+        return Response(
+            obtener_patron_semanal_distrito(int(id_distrito), fecha_inicio, fecha_fin),
+            status=status.HTTP_200_OK,
+        )
+
+
+class RankingDistritosView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request):
+        fecha_inicio = request.query_params.get("desde", "2025-07-01")
+        fecha_fin = request.query_params.get("hasta", "2026-06-30")
+        return Response(obtener_ranking_distritos_historico(fecha_inicio, fecha_fin), status=status.HTTP_200_OK)
+    
+class PatronHorarioM30View(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request):
+        fecha_inicio = request.query_params.get("desde", "2025-07-01")
+        fecha_fin = request.query_params.get("hasta", "2026-06-30")
+        return Response(obtener_patron_horario_m30(fecha_inicio, fecha_fin), status=status.HTTP_200_OK)
