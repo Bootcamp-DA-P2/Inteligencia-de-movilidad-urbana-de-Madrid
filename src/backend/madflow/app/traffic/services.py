@@ -4,6 +4,9 @@ import joblib
 import pandas as pd
 import duckdb
 
+UMBRAL_BAJO_MEDIO = 1.0
+UMBRAL_MEDIO_ALTO = 4.06
+
 # src/backend/madflow/app/traffic/services.py
 SRC_DIR = Path(__file__).resolve().parents[4]      # .../src
 PROJECT_ROOT = SRC_DIR.parent                        # .../Inteligencia-de-movilidad-urbana-de-Madrid
@@ -37,6 +40,7 @@ def predecir_sensor(id_sensor: int) -> dict:
     return {
         "id_sensor": id_sensor,
         "prediccion_ocupacion": float(prediccion),
+        "nivel_congestion": clasificar_congestion(float(prediccion)),
         "campos_imputados": list(imputados.keys()),
         "confiable": len(imputados) == 0,
     }
@@ -66,3 +70,11 @@ def obtener_sensores_por_distrito(id_distrito: int) -> list[dict]:
         }
         for fila in resultado
     ]
+
+def clasificar_congestion(ocupacion: float) -> str:
+    if ocupacion < UMBRAL_BAJO_MEDIO:
+        return "bajo"
+    elif ocupacion < UMBRAL_MEDIO_ALTO:
+        return "medio"
+    else:
+        return "alto"

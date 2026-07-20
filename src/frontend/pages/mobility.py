@@ -171,13 +171,20 @@ st.divider()
 
 st.subheader("Predicción")
 
+ETIQUETAS = {"bajo": "🟢 Tráfico bajo", "medio": "🟡 Tráfico medio", "alto": "🔴 Tráfico alto"}
+
 if id_sensor_seleccionado:
     if st.button("Predecir"):
         with st.spinner("Calculando predicción..."):
             response = get_prediction(int(id_sensor_seleccionado))
         if response.status_code == 200:
             data = response.json()
-            st.metric("Ocupación prevista (%)", f"{data['prediccion_ocupacion']:.2f}")
+            nivel = data["nivel_congestion"]
+            porcentaje = data["prediccion_ocupacion"]
+
+            st.markdown(f"### {ETIQUETAS[nivel]}")
+            st.caption(f"Ocupación estimada: {porcentaje:.2f}%")
+
             if not data["confiable"]:
                 st.warning("⚠️ Predicción con estimación histórica (aún acumulando datos en vivo para este sensor).")
             else:

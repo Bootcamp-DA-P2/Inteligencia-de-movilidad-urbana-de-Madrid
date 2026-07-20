@@ -6,10 +6,9 @@ DB_PATH = ROOT / "database" / "trafico.duckdb"
 
 con = duckdb.connect(str(DB_PATH), read_only=True)
 con.sql("""
-    SELECT id_sensor, fecha, COUNT(*) AS veces
-    FROM raw_live
-    GROUP BY id_sensor, fecha
-    HAVING COUNT(*) > 1
+    SELECT
+        approx_quantile(ocupacion_media, 0.33) AS umbral_bajo_medio,
+        approx_quantile(ocupacion_media, 0.66) AS umbral_medio_alto
+    FROM fact_trafico_hora
 """).show()
 con.close()
-print("Duplicados eliminados de raw_live")
