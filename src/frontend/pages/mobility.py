@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from services.traffic_service import get_prediction, get_sensores_distrito
+import datetime
 
 st.title("🚦 Predicción de tráfico en Madrid")
 
@@ -174,9 +175,31 @@ st.subheader("Predicción")
 ETIQUETAS = {"bajo": "🟢 Tráfico bajo", "medio": "🟡 Tráfico medio", "alto": "🔴 Tráfico alto"}
 
 if id_sensor_seleccionado:
+    usar_fecha_concreta = st.checkbox("Predecir para una fecha/hora concreta (en vez de la más reciente)")
+    fecha_elegida = None
+    hora_elegida = None
+    if usar_fecha_concreta:
+        fecha_elegida = st.date_input(
+            "Fecha",
+            value=datetime.date.today(),
+            min_value=datetime.date.today(),
+        )
+
+        if fecha_elegida == datetime.date.today():
+            hora_actual = datetime.datetime.now().hour
+            horas_disponibles = list(range(hora_actual, 24))
+        else:
+            horas_disponibles = list(range(24))
+
+        hora_elegida = st.selectbox("Hora", options=horas_disponibles)
+
     if st.button("Predecir"):
         with st.spinner("Calculando predicción..."):
-            response = get_prediction(int(id_sensor_seleccionado))
+            response = get_prediction(
+                int(id_sensor_seleccionado),
+                fecha=fecha_elegida.isoformat() if fecha_elegida else None,
+                hora=hora_elegida,
+            )
         if response.status_code == 200:
             data = response.json()
             nivel = data["nivel_congestion"]
@@ -185,10 +208,12 @@ if id_sensor_seleccionado:
             st.markdown(f"### {ETIQUETAS[nivel]}")
             st.caption(f"Ocupación estimada: {porcentaje:.2f}%")
 
-            if not data["confiable"]:
-                st.warning("⚠️ Predicción con estimación histórica (aún acumulando datos en vivo para este sensor).")
+            if "fila_base" in data["campos_imputados"]:
+                st.warning(" Predicción basada completamente en patrones históricos (no hay datos reales para esa fecha/hora).")
+            elif not data["confiable"]:
+                st.warning(" Predicción con estimación histórica parcial (algunos datos recientes faltan).")
             else:
-                st.success("🟢 Predicción con datos reales completos.")
+                st.success(" Predicción con datos reales completos.")
         else:
             st.error(f"Error: {response.json().get('error', 'desconocido')}")
 else:

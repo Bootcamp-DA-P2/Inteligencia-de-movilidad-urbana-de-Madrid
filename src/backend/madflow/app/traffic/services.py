@@ -3,6 +3,7 @@ from pathlib import Path
 import joblib
 import pandas as pd
 import duckdb
+import datetime
 
 UMBRAL_BAJO_MEDIO = 1.0
 UMBRAL_MEDIO_ALTO = 4.06
@@ -28,8 +29,8 @@ def _get_modelo():
         _modelo = joblib.load(MODELO_PATH)
     return _modelo
 
-def predecir_sensor(id_sensor: int) -> dict:
-    fila, imputados = construir_fila_features(id_sensor)
+def predecir_sensor(id_sensor: int, fecha_hora: datetime.datetime | None = None) -> dict:
+    fila, imputados = construir_fila_features(id_sensor, fecha_hora_objetivo=fecha_hora)
 
     X = fila.to_pandas()
     X["tipo_elem"] = pd.Categorical(X["tipo_elem"], categories=CATEGORIAS_TIPO_ELEM)
