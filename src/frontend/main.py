@@ -75,6 +75,9 @@ else:
         "Movilidad": [
             st.Page("pages/mobility.py", title="Movilidad Madrid", icon="🚦")
         ],
+        "Ruta": [
+            st.Page("pages/route.py", title="Ruta Optimizada por Ocupación", icon="🛣️")
+        ],
         "Sobre Nosotros": [
             st.Page("pages/about_us.py", title="Sobre Nosotros", icon="🙋🏻")
         ],
