@@ -1,3 +1,4 @@
+import math
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -18,6 +19,16 @@ DISTRITOS = {
 
 def marcar_seleccion_activa():
     st.session_state.seleccion_activa = True
+
+
+def distancia_metros(lat1, lon1, lat2, lon2) -> float:
+    """Distancia en metros entre dos puntos (lat/lon) usando la fórmula de Haversine."""
+    R = 6371000  # radio de la Tierra en metros
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    d_phi = math.radians(lat2 - lat1)
+    d_lambda = math.radians(lon2 - lon1)
+    a = math.sin(d_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
+    return 2 * R * math.asin(math.sqrt(a))
 
 
 # --- elegir distrito ---
@@ -58,6 +69,10 @@ if id_distrito:
             df = df.dropna(subset=["latitud", "longitud"])
 
             df["nombre_hover"] = df["nombre_calle"].fillna(df["nombre_norm"]).fillna("Sin nombre")
+
+            # Guardamos los sensores del distrito actual para poder usarlos
+            # más abajo en la predicción alternativa (todos los sensores)
+            st.session_state.sensores_distrito = sensores
 
             def nombre_mostrar(s: dict) -> str:
                 nombre = s["nombre_calle"] or s["nombre_norm"] or f"Sensor {s['id_sensor']}"
@@ -186,20 +201,39 @@ if id_sensor_seleccionado:
         )
 
         if fecha_elegida == datetime.date.today():
-            hora_actual = datetime.datetime.now().hour
-            horas_disponibles = list(range(hora_actual, 24))
+            # Sumamos 1 a la hora actual para empezar desde la siguiente hora
+            hora_inicio = datetime.datetime.now().hour + 1
+            
+            # Si ya son las 23:00 o más tarde, limitamos el rango para evitar errores
+            if hora_inicio > 23:
+                horas_disponibles = [23]  # O podías dejar una lista vacía/aviso
+            else:
+                horas_disponibles = list(range(hora_inicio, 24))
         else:
             horas_disponibles = list(range(24))
 
         hora_elegida = st.selectbox("Hora", options=horas_disponibles)
 
+    # Inicializar variables de estado
+    if "mostrar_principal" not in st.session_state:
+        st.session_state.mostrar_principal = False
+    if "mostrar_alternativa" not in st.session_state:
+        st.session_state.mostrar_alternativa = False
+
+    # Al pulsar Predecir, activamos la vista principal y reseteamos la alternativa anterior
     if st.button("Predecir"):
+        st.session_state.mostrar_principal = True
+        st.session_state.mostrar_alternativa = False
+
+    # Renderizar la predicción principal si está activa
+    if st.session_state.mostrar_principal:
         with st.spinner("Calculando predicción..."):
             response = get_prediction(
                 int(id_sensor_seleccionado),
                 fecha=fecha_elegida.isoformat() if fecha_elegida else None,
                 hora=hora_elegida,
             )
+        
         if response.status_code == 200:
             data = response.json()
             nivel = data["nivel_congestion"]
@@ -214,7 +248,129 @@ if id_sensor_seleccionado:
                 st.warning(" Predicción con estimación histórica parcial (algunos datos recientes faltan).")
             else:
                 st.success(" Predicción con datos reales completos.")
+            
+            # MOSTRAR SECCIÓN ALTERNATIVA SOLO SI NO ESTÁ MARCADA LA OPCIÓN
+            if not usar_fecha_concreta:
+                st.divider()
+                st.subheader("Predicción alternativa: sensores cercanos al seleccionado")
+                
+                sensores_distrito = st.session_state.get("sensores_distrito")
+                
+                if not sensores_distrito:
+                    st.info("No hay sensores del distrito cargados todavía.")
+                else:
+                    sensor_base = next(
+                        (s for s in sensores_distrito if s["id_sensor"] == id_sensor_seleccionado),
+                        None,
+                    )
+
+                    if sensor_base is None or sensor_base.get("latitud") is None or sensor_base.get("longitud") is None:
+                        st.warning("No se encontraron coordenadas para el sensor seleccionado.")
+                    else:
+                        lat_base = float(sensor_base["latitud"])
+                        lon_base = float(sensor_base["longitud"])
+
+                        # Control para elegir cuántos comparar
+                        n_cercanos = st.slider(
+                            "Número de sensores cercanos a comparar",
+                            min_value=1,
+                            max_value=min(20, max(len(sensores_distrito) - 1, 1)),
+                            value=min(5, max(len(sensores_distrito) - 1, 1)),
+                            key="slider_sensores_cercanos"
+                        )
+
+                        # SEGUNDO BOTÓN: Solo aparece aquí abajo si no está marcada la opción
+                        if st.button("Calcular predicción alternativa"):
+                            st.session_state.mostrar_alternativa = True
+
+                        # Renderizar los resultados de los sensores cercanos si se pulsó el segundo botón
+                        if st.session_state.mostrar_alternativa:
+                            candidatos = []
+                            for s in sensores_distrito:
+                                if s["id_sensor"] == id_sensor_seleccionado:
+                                    continue
+                                if s.get("latitud") is None or s.get("longitud") is None:
+                                    continue
+                                dist = distancia_metros(lat_base, lon_base, float(s["latitud"]), float(s["longitud"]))
+                                candidatos.append((dist, s))
+
+                            candidatos.sort(key=lambda x: x[0])
+                            mas_cercanos = candidatos[:n_cercanos]
+
+                            resultados = []
+                            total = len(mas_cercanos)
+                            progreso = st.progress(0, text="Calculando predicciones alternativas...")
+
+                            for i, (dist, s) in enumerate(mas_cercanos):
+                                id_s = s["id_sensor"]
+                                nombre = s["nombre_calle"] or s["nombre_norm"] or f"Sensor {id_s}"
+                                nombre_completo = f"{nombre.capitalize()} (# {id_s})"
+
+                                try:
+                                    # Mantiene la consulta en tiempo real (más reciente) para los alternativos
+                                    resp = get_prediction(int(id_s))
+                                    if resp.status_code == 200:
+                                        data_alt = resp.json()
+                                        nivel_alt = data_alt["nivel_congestion"]
+                                        resultados.append({
+                                            "Sensor": nombre_completo,
+                                            "Distancia (m)": round(dist),
+                                            "Nivel Ocupación": ETIQUETAS.get(nivel_alt, nivel_alt),
+                                            "Ocupación prevista (%)": round(data_alt["prediccion_ocupacion"], 2),
+                                            "Confiable": "🟢 Sí" if data_alt["confiable"] else "⚠️ Estimada",
+                                        })
+                                    else:
+                                        resultados.append({
+                                            "Sensor": nombre_completo,
+                                            "Distancia (m)": round(dist),
+                                            "Nivel Ocupación": "❌ Sin datos",
+                                            "Ocupación prevista (%)": None,
+                                            "Confiable": "❌ Error",
+                                        })
+                                except Exception:
+                                    resultados.append({
+                                        "Sensor": nombre_completo,
+                                        "Distancia (m)": round(dist),
+                                        "Nivel Ocupación": "❌ Error crítico",
+                                        "Ocupación prevista (%)": None,
+                                        "Confiable": "❌ Error",
+                                    })
+
+                                progreso.progress((i + 1) / total, text=f"Calculando... ({i + 1}/{total})")
+
+                            progreso.empty()
+
+                            df_resultados = (
+                                pd.DataFrame(resultados)
+                                .sort_values("Distancia (m)", ascending=True, na_position="last")
+                                .reset_index(drop=True)
+                            )
+                            
+                            st.write(
+                                f"Sensores más cercanos a **{nombre_mostrar(sensor_base)}**, "
+                                "ordenados de **menor a mayor** ocupación prevista:"
+                            )
+
+                            # Configuración para alinear las columnas de texto a la derecha
+                            config_columnas = {
+                                "Nivel Ocupación": st.column_config.TextColumn(
+                                    "Nivel Ocupación",
+                                    alignment="right"
+                                ),
+                                "Confiable": st.column_config.TextColumn(
+                                    "Confiable",
+                                    alignment="right"
+                                )
+                            }
+                            st.dataframe(
+                                df_resultados,
+                                use_container_width=True,
+                                hide_index=True,
+                                column_config=config_columnas 
+                            )
         else:
             st.error(f"Error: {response.json().get('error', 'desconocido')}")
 else:
     st.info("Elige primero un distrito y un sensor para ver la predicción.")
+    st.session_state.mostrar_principal = False
+    st.session_state.mostrar_alternativa = False

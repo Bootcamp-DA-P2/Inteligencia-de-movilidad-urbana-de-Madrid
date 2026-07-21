@@ -7,7 +7,7 @@ def get_prediction(id_sensor: int, fecha=None, hora=None):
     params = ""
     if fecha and hora is not None:
         params = f"?fecha={fecha}&hora={hora}"
-    response = requests.get(url_traffic + f"predict/{id_sensor}/{params}", timeout=15)
+    response = requests.get(url_traffic + f"predict/{id_sensor}/{params}", timeout=40)
     return response
 
 # Distrito
