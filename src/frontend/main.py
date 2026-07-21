@@ -20,8 +20,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # 1. CONFIGURACIÓN INICIAL
 st.set_page_config(
-    page_title="Inteligencia de movilidad urbana de Madrid",
-    page_icon="🚗",
+    page_title="MadFlow",
+    page_icon=MADFLOW_PATH,
     layout="wide"
 )
 
