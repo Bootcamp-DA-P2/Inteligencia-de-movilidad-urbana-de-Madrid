@@ -9,6 +9,10 @@ import networkx as nx
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from services.traffic_service import get_prediction, get_sensores_distrito
 
+from theme import apply_theme, header_banner
+apply_theme()
+header_banner("MadFlow: Ruta Optimizada", "Mejor recorrido según la ocupación")
+
 st.title("🛣️ Ruta Optimizada por Ocupación")
 
 DISTRITOS = {
