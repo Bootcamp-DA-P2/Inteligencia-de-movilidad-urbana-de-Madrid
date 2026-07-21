@@ -79,3 +79,79 @@ def clasificar_congestion(ocupacion: float) -> str:
         return "medio"
     else:
         return "alto"
+
+def obtener_evolucion_sensor(id_sensor: int, fecha_inicio: str, fecha_fin: str) -> list[dict]:
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+    resultado = con.execute("""
+        SELECT id_fecha, hora, intensidad_media, ocupacion_media
+        FROM fact_trafico_hora
+        WHERE id_sensor = ? AND id_fecha BETWEEN ? AND ?
+        ORDER BY id_fecha, hora
+    """, [id_sensor, fecha_inicio, fecha_fin]).fetchall()
+    con.close()
+    return [
+        {"fecha": str(r[0]), "hora": r[1], "intensidad_media": r[2], "ocupacion_media": r[3]}
+        for r in resultado
+    ]
+
+
+def obtener_patron_horario_distrito(id_distrito: int, fecha_inicio: str, fecha_fin: str) -> list[dict]:
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+    resultado = con.execute("""
+        SELECT f.hora, AVG(f.ocupacion_media) AS ocupacion_media, AVG(f.intensidad_media) AS intensidad_media
+        FROM fact_trafico_hora f
+        JOIN dim_sensor s ON f.id_sensor = s.id_sensor
+        WHERE s.distrito = ? AND f.id_fecha BETWEEN ? AND ?
+        GROUP BY f.hora
+        ORDER BY f.hora
+    """, [id_distrito, fecha_inicio, fecha_fin]).fetchall()
+    con.close()
+    return [{"hora": r[0], "ocupacion_media": r[1], "intensidad_media": r[2]} for r in resultado]
+
+
+def obtener_patron_semanal_distrito(id_distrito: int, fecha_inicio: str, fecha_fin: str) -> list[dict]:
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+    resultado = con.execute("""
+        SELECT d.dia_semana, AVG(f.ocupacion_media) AS ocupacion_media
+        FROM fact_trafico_hora f
+        JOIN dim_sensor s ON f.id_sensor = s.id_sensor
+        JOIN dim_fecha d ON f.id_fecha = d.id_fecha
+        WHERE s.distrito = ? AND f.id_fecha BETWEEN ? AND ?
+        GROUP BY d.dia_semana
+        ORDER BY d.dia_semana
+    """, [id_distrito, fecha_inicio, fecha_fin]).fetchall()
+    con.close()
+    return [{"dia_semana": r[0], "ocupacion_media": r[1]} for r in resultado]
+
+
+def obtener_ranking_distritos_historico(fecha_inicio: str, fecha_fin: str) -> list[dict]:
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+    resultado = con.execute("""
+        SELECT s.distrito, AVG(f.ocupacion_media) AS ocupacion_media
+        FROM fact_trafico_hora f
+        JOIN dim_sensor s ON f.id_sensor = s.id_sensor
+        WHERE f.id_fecha BETWEEN ? AND ?
+        GROUP BY s.distrito
+        ORDER BY ocupacion_media DESC
+    """, [fecha_inicio, fecha_fin]).fetchall()
+    con.close()
+    return [{"distrito": r[0], "ocupacion_media": r[1]} for r in resultado]
+
+def obtener_patron_horario_m30(fecha_inicio: str, fecha_fin: str) -> list[dict]:
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+    resultado = con.execute("""
+        SELECT f.hora,
+               AVG(f.velocidad_media) AS velocidad_media,
+               AVG(f.ocupacion_media) AS ocupacion_media,
+               AVG(f.intensidad_media) AS intensidad_media
+        FROM fact_trafico_hora f
+        JOIN dim_sensor s ON f.id_sensor = s.id_sensor
+        WHERE s.tipo_elem = 'M30' AND f.id_fecha BETWEEN ? AND ?
+        GROUP BY f.hora
+        ORDER BY f.hora
+    """, [fecha_inicio, fecha_fin]).fetchall()
+    con.close()
+    return [
+        {"hora": r[0], "velocidad_media": r[1], "ocupacion_media": r[2], "intensidad_media": r[3]}
+        for r in resultado
+    ]
