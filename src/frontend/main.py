@@ -5,6 +5,10 @@ import streamlit as st
 # Importamos las funciones de renderizado
 from pages.login import show_login_page
 from pages.register import show_register_page
+from pathlib import Path
+
+# La carpeta assets/ está en la raíz del repo (dos niveles arriba de src/frontend)
+LOGO_PATH = str(Path(__file__).resolve().parents[2] / "assets" / "logomadrid.png")
 
 # --- CONFIGURACIÓN DE DESARROLLO ---
 # Cambia esto a False cuando quieras que el login sea obligatorio
@@ -19,6 +23,13 @@ st.set_page_config(
     page_icon="🚗",
     layout="wide"
 )
+
+from theme import apply_theme
+apply_theme()
+
+from theme import apply_theme
+apply_theme()
+st.logo(LOGO_PATH)   # fija el logo en el tope del sidebar, arriba del menú
 
 # 2. Inicializar estado de la sesión
 if "logged_in" not in st.session_state:
