@@ -510,7 +510,7 @@ else:
             })
 
         datos_tabla.append({
-            "Etapa": f"{SVG_DESTINO_STR}Destino",
+            "Etapa": "Destino",
             "Calle / Vía": calle_destino,
             "Sensor(es) Cercanos": f"#{sensor_destino['id_sensor']}",
             "Distancia": "Llegada",
