@@ -1,14 +1,6 @@
 [theme]
-# Acento violeta (botones, widgets activos, tabs seleccionadas)
 primaryColor = "#7E57C2"
-# Fondo del área principal (blanco con leve tinte azul)
-backgroundColor = "#F4F8FC"
-# Fondo de widgets/contenedores. El sidebar lo pintamos aparte por CSS.
-secondaryBackgroundColor = "#FFFFFF"
-# Texto general
-textColor = "#0A2A4A"
 font = "sans serif"
 
 [client]
-# Oculta el menú hamburguesa de Streamlit para un look más "dashboard"
 toolbarMode = "minimal"
