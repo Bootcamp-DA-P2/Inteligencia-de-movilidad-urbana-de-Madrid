@@ -5,6 +5,10 @@ import plotly.express as px
 from services.traffic_service import get_prediction, get_sensores_distrito
 import datetime
 
+from theme import apply_theme, header_banner
+apply_theme()
+header_banner("MadFlow: Movilidad en Tiempo Real", "Mapa de tráfico de Madrid")
+
 st.title("🚦 Predicción de tráfico en Madrid")
 
 DISTRITOS = {

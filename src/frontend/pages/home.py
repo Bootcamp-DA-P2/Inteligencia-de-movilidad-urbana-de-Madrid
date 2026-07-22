@@ -1,6 +1,10 @@
 import streamlit as st
 from streamlit_carousel_uui import uui_carousel
 
+from theme import apply_theme, header_banner
+apply_theme()
+header_banner("MadFlow: Movilidad Urbana de Madrid", "Inicio")
+
 
 st.title("Inteligencia de movilidad urbana de Madrid")
 st.write("Bienvenido a la aplicación de inteligencia de movilidad urbana de Madrid.")

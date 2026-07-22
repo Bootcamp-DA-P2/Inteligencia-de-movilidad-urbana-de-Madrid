@@ -1,5 +1,9 @@
 import streamlit as st
 
+from theme import apply_theme, header_banner
+apply_theme()
+header_banner("MadFlow: Sobre Nosotros", "El equipo detrás del proyecto")
+
 def card_user(user):
     img = user.get('img', '')
     name = str(user.get('name', ''))

@@ -29,6 +29,11 @@ st.set_page_config(page_title="{SVG_RUTA} Ruta Inteligente de Tráfico", layout=
 # Mensaje de cabecera limpio
 st.title("🗺️ Planificador de Ruta Inteligente")
 st.markdown("Optimiza tu trayecto evitando tramos con alta densidad de tráfico en tiempo real.")
+from theme import apply_theme, header_banner
+apply_theme()
+header_banner("MadFlow: Ruta Optimizada", "Mejor recorrido según la ocupación")
+
+st.title("🛣️ Ruta Optimizada por Ocupación")
 
 DISTRITOS = {
     1: "Centro", 2: "Arganzuela", 3: "Retiro", 4: "Salamanca", 5: "Chamartín",
