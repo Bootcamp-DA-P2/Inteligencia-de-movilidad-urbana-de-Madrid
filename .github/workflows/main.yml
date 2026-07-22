@@ -23,14 +23,16 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
+      # Aseguramos la creación de la carpeta de logs
       - name: Crear directorio de logs
         run: mkdir -p logs
 
+      # Cambiamos a la ejecución simple para ver si el error es de ruta
       - name: Ejecutar Recolector Crudo
-        run: python src/etl/recolector_crudo.py >> logs/recolector.log 2>&1
+        run: python src/etl/recolector_crudo.py
 
       - name: Ejecutar Agregador Horario
-        run: python src/etl/agregador_horario.py >> logs/agregador.log 2>&1
+        run: python src/etl/agregador_horario.py
 
       - name: Guardar logs de ejecución
         uses: actions/upload-artifact@v4
