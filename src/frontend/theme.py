@@ -79,8 +79,8 @@ def apply_theme() -> None:
       /* Los links de navegación (st.navigation) */
       [data-testid="stSidebarNav"] a {{
         border-radius: 10px;
-        margin: 2px 8px;
-        padding: 6px 10px;
+        margin: 14px 8px;
+        padding: 10px 10px;
       }}
       [data-testid="stSidebarNav"] a:hover {{
         background-color: rgba(255,255,255,0.15);
