@@ -40,11 +40,13 @@ PLOTLY_SEQUENCE = [
 # Layout base para pasar a fig.update_layout(**PLOTLY_LAYOUT)
 PLOTLY_LAYOUT = dict(
     font=dict(family="sans-serif", color=COLORS["azul_oscuro"], size=13),
-    title=dict(font=dict(color=COLORS["azul_oscuro"], size=16)),
+    # OJO: no definir aquí 'title'. Si se pasa un title sin 'text', Plotly
+    # muestra literalmente "undefined" arriba a la izquierda del gráfico.
+    # Los encabezados los ponemos con st.subheader/st.markdown.
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
     colorway=PLOTLY_SEQUENCE,
-    margin=dict(l=10, r=10, t=50, b=10),
+    margin=dict(l=10, r=10, t=30, b=10),
     xaxis=dict(gridcolor="#E3EAF2", zerolinecolor="#E3EAF2"),
     yaxis=dict(gridcolor="#E3EAF2", zerolinecolor="#E3EAF2"),
     legend=dict(bgcolor="rgba(255,255,255,0.6)"),
