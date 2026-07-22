@@ -173,7 +173,7 @@ if id_distrito:
 
             evento = st.plotly_chart(
                 fig,
-                use_container_width=True,
+                width="stretch",
                 on_select="rerun",
                 selection_mode="points",
                 key="mapa_sensores",
@@ -368,7 +368,7 @@ if id_sensor_seleccionado:
                             }
                             st.dataframe(
                                 df_resultados,
-                                use_container_width=True,
+                                width="stretch",
                                 hide_index=True,
                                 column_config=config_columnas 
                             )

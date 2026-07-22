@@ -87,7 +87,7 @@ with tab_resumen:
     fig_rk.update_traces(marker_color=colores)
     fig_rk.update_layout(**PLOTLY_LAYOUT, height=520)
     fig_rk.update_layout(xaxis_title="Ocupación media (%)", yaxis_title="")
-    st.plotly_chart(fig_rk, use_container_width=True)
+    st.plotly_chart(fig_rk, width="stretch")
 
 # ========================= TEMPORALIDAD =========================
 with tab_temporal:
@@ -108,7 +108,7 @@ with tab_temporal:
         fig_h.update_traces(line_color=COLORS["azul_linea"], line_width=3)
         fig_h.update_layout(**PLOTLY_LAYOUT, height=340)
         fig_h.update_layout(xaxis_title="Hora del día (0-23)", yaxis_title="Ocupación (%)")
-        st.plotly_chart(fig_h, use_container_width=True)
+        st.plotly_chart(fig_h, width="stretch")
 
     with col2:
         st.markdown("**Promedio por día de la semana**")
@@ -123,7 +123,7 @@ with tab_temporal:
         fig_s.update_traces(marker_color=colores_sem)
         fig_s.update_layout(**PLOTLY_LAYOUT, height=340)
         fig_s.update_layout(xaxis_title="", yaxis_title="Ocupación (%)")
-        st.plotly_chart(fig_s, use_container_width=True)
+        st.plotly_chart(fig_s, width="stretch")
 
     st.divider()
 
@@ -132,4 +132,4 @@ with tab_temporal:
     fig_m30.update_traces(line_color=COLORS["azul_linea"], line_width=3)
     fig_m30.update_layout(**PLOTLY_LAYOUT, height=360)
     fig_m30.update_layout(xaxis_title="Hora del día (0-23)", yaxis_title="Ocupación (%)")
-    st.plotly_chart(fig_m30, use_container_width=True)
+    st.plotly_chart(fig_m30, width="stretch")

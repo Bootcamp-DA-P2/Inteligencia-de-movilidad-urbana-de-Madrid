@@ -367,7 +367,7 @@ else:
         height=380,
     )
     fig_select.update_layout(mapbox_style="open-street-map", margin={"r": 0, "t": 0, "l": 0, "b": 0})
-    st.plotly_chart(fig_select, use_container_width=True)
+    st.plotly_chart(fig_select, width="stretch")
 
     # --- 4. ALGORITMO DE RUTA REAL ---
     st.markdown("---")
@@ -380,7 +380,7 @@ else:
         help="0 calcula la distancia geométrica más corta. Valores altos priorizan calles más fluídas."
     )
 
-    if st.button("Calcular Ruta Optimizada", type="primary", use_container_width=True):
+    if st.button("Calcular Ruta Optimizada", type="primary", width="stretch"):
         sensor_origen = dict_sensores[st.session_state.sel_origen]
         sensor_destino = dict_sensores[st.session_state.sel_destino]
 
@@ -523,7 +523,7 @@ else:
         })
 
         st.markdown(f"### <img src='{SVG_RUTA}' align='top'/> Itinerario detallado de la ruta", unsafe_allow_html=True)
-        st.dataframe(pd.DataFrame(datos_tabla), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(datos_tabla), width="stretch", hide_index=True)
         st.caption(f"Distancia total estimada del recorrido: **{distancia_total / 1000:.2f} km**.")
 
         # --- MAPA FINAL CON DETALLES MEJORADOS ---
@@ -582,4 +582,4 @@ else:
             height=450,
             legend=dict(bgcolor="rgba(255,255,255,0.8)"),
         )
-        st.plotly_chart(fig_ruta, use_container_width=True)
+        st.plotly_chart(fig_ruta, width="stretch")
