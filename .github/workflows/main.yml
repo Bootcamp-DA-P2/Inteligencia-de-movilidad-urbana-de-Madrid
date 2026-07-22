@@ -1,10 +1,11 @@
 name: Ejecutor de Tareas ETL
 
 on:
-  workflow_dispatch: # Permite ejecutar manualmente y seleccionar la rama
+  workflow_dispatch:
   push:
     branches:
-      - develop # Se ejecuta automáticamente cuando subas cambios a develop
+      - develop
+      - main
   schedule:
     - cron: '0 2 * * *'
 
@@ -21,10 +22,15 @@ jobs:
         with:
           python-version: '3.11'
 
+      # Instala dependencias e ignora versiones fijas que fallen
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements.txt ]; then
+            # Si la instalación estricta falla por una versión errónea,
+            # instala las librerías quitando el fijado estricto (==)
+            pip install -r requirements.txt || sed -i 's/==.*/ /g' requirements.txt && pip install -r requirements.txt
+          fi
 
       - name: Crear carpeta de logs
         run: mkdir -p logs
