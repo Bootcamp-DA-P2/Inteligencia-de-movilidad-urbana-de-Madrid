@@ -32,9 +32,10 @@ def col_ocupacion(df: pd.DataFrame) -> str:
 # ---------------------------------------------------------------------------
 # Filtros globales (en el sidebar, imitando el panel de slicers del mockup)
 # ---------------------------------------------------------------------------
-st.sidebar.header("Filtros")
-fecha_desde = st.sidebar.date_input("Desde", value=pd.Timestamp("2025-07-01"))
-fecha_hasta = st.sidebar.date_input("Hasta", value=pd.Timestamp("2026-06-30"))
+with st.sidebar.container(border=True, key="filtros"):
+    st.markdown("### 🔎 Filtros")
+    fecha_desde = st.date_input("Desde", value=pd.Timestamp("2025-07-01"))
+    fecha_hasta = st.date_input("Hasta", value=pd.Timestamp("2026-06-30"))
 desde_str, hasta_str = fecha_desde.isoformat(), fecha_hasta.isoformat()
 
 # ---------------------------------------------------------------------------

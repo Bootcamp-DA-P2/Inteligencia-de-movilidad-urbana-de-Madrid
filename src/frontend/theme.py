@@ -12,6 +12,9 @@ Uso:
     kpi_card("Variación fin de semana", "-26,54 %", positive=True)
 """
 
+import base64
+from pathlib import Path
+
 import streamlit as st
 
 # --- Paleta central (única fuente de verdad) ---
@@ -103,36 +106,78 @@ def apply_theme() -> None:
         display: flex !important;
         justify-content: center !important;
         min-height: 120px !important;
+        padding-top: 28px !important;
+        padding-bottom: 20px !important;
       }}
       [data-testid="stSidebar"] img {{
-        height: 100px !important;
-        max-height: 100px !important;
+        height: 120px !important;
+        max-height: 120px !important;
         width: auto !important;
-        margin: 12px auto 8px auto !important;
+        margin: 32px auto 20px auto !important;
         display: block !important;
         object-fit: contain !important;
+        /* Tarjeta clara detrás del logo para dar contraste sobre el azul */
+        background: #EAF3FC !important;      /* celeste claro; poné #FFFFFF para blanco */
+        padding: 12px 18px !important;
+        border-radius: 16px !important;
+        box-shadow: 0 3px 12px rgba(0,0,0,0.18) !important;
       }}
 
-      /* ---------- TABS TIPO PÍLDORA ---------- */
-      .stTabs [data-baseweb="tab-list"] {{
+      /* Espacio al fondo del sidebar para que el panel de filtros no quede pegado abajo */
+      [data-testid="stSidebarUserContent"] {{
+        padding-bottom: 36px !important;
+      }}
+
+      /* ---------- PANEL DE FILTROS (st.container(border=True, key="filtros")) ---------- */
+      /* .st-key-filtros es una clase estable que Streamlit genera desde la key del contenedor */
+      [data-testid="stSidebar"] .st-key-filtros {{
+        background: #EAF3FC !important;
+        border: 1px solid #BFE3E0 !important;
+        border-radius: 12px !important;
+        padding: 14px 14px 6px 14px !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.12) !important;
+      }}
+      /* Sobre fondo claro, el texto del panel debe ir oscuro (no blanco) */
+      [data-testid="stSidebar"] .st-key-filtros *:not(input) {{
+        color: {COLORS['azul_oscuro']} !important;
+      }}
+
+      /* ---------- TABS TIPO PÍLDORA (Streamlit react-aria: data-testid="stTab") ---------- */
+      .stTabs [role="tablist"] {{
         gap: 10px;
         background: transparent;
         border-bottom: none;
       }}
-      .stTabs [data-baseweb="tab"] {{
-        background-color: #FFFFFF;
-        border: 1px solid var(--teal-borde);
-        border-radius: 10px;
-        padding: 8px 22px;
-        color: var(--azul-oscuro);
-        font-weight: 600;
+      /* Cada pestaña — doble atributo para ganar especificidad vs. la regla de Streamlit */
+      [data-testid="stTab"][role="tab"] {{
+        background-color: #FFFFFF !important;
+        border: 1px solid var(--teal-borde) !important;
+        border-radius: 10px !important;
+        padding: 10px 36px !important;
+        margin-bottom: 4px !important;
+        font-weight: 600 !important;
       }}
-      .stTabs [aria-selected="true"] {{
+      /* El espacio alrededor de la palabra lo da el margin del <p> interno.
+         Selector estable por data-testid (NO usar la clase .st-emotion-cache-*,
+         que cambia entre versiones de Streamlit). */
+      [data-testid="stTab"] [data-testid="stMarkdownContainer"] p {{
+        color: var(--azul-oscuro);
+        margin: 5px 16px !important;
+      }}
+      /* Pestaña activa: pastilla violeta, texto blanco */
+      [data-testid="stTab"][aria-selected="true"],
+      [data-testid="stTab"][data-selected="true"] {{
         background-color: var(--violeta) !important;
-        color: #FFFFFF !important;
         border-color: var(--violeta) !important;
       }}
-      .stTabs [data-baseweb="tab-highlight"] {{ display: none; }}
+      [data-testid="stTab"][aria-selected="true"] [data-testid="stMarkdownContainer"] p,
+      [data-testid="stTab"][data-selected="true"] [data-testid="stMarkdownContainer"] p {{
+        color: #FFFFFF !important;
+      }}
+      /* Indicador inferior (react-aria): azul en vez del rojo por defecto */
+      .react-aria-SelectionIndicator {{
+        background-color: var(--azul-madrid) !important;
+      }}
 
       /* ---------- TARJETAS KPI (st.metric) ---------- */
       [data-testid="stMetric"] {{
@@ -141,6 +186,10 @@ def apply_theme() -> None:
         border-radius: 14px;
         padding: 16px 18px;
         box-shadow: 0 2px 8px rgba(11,95,165,0.06);
+        min-height: 140px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
       }}
       [data-testid="stMetricLabel"] {{
         color: var(--azul-oscuro);
@@ -156,15 +205,37 @@ def apply_theme() -> None:
       h1, h2, h3 {{ color: var(--azul-oscuro); }}
 
       /* ---------- BOTONES ---------- */
-      .stButton > button {{
-        border-radius: 10px;
-        border: 1px solid var(--violeta);
-        color: var(--violeta);
-        font-weight: 600;
+      /* Estado normal: fondo morado, texto blanco (legible sobre morado) */
+      .stButton > button,
+      .stDownloadButton > button,
+      [data-testid="stFormSubmitButton"] button,
+      [data-testid="stSidebar"] .stButton > button {{
+        background-color: var(--violeta) !important;
+        color: #FFFFFF !important;
+        border: 1px solid var(--violeta) !important;
+        border-radius: 10px !important;
+        font-weight: 600 !important;
       }}
-      .stButton > button:hover {{
-        background-color: var(--violeta);
-        color: #FFFFFF;
+      .stButton > button *,
+      .stDownloadButton > button *,
+      [data-testid="stFormSubmitButton"] button *,
+      [data-testid="stSidebar"] .stButton > button * {{
+        color: #FFFFFF !important;
+      }}
+      /* Hover / click / foco: fondo blanco, texto morado (legible sobre blanco) */
+      .stButton > button:hover, .stButton > button:active, .stButton > button:focus, .stButton > button:focus-visible,
+      .stDownloadButton > button:hover, .stDownloadButton > button:active, .stDownloadButton > button:focus,
+      [data-testid="stFormSubmitButton"] button:hover, [data-testid="stFormSubmitButton"] button:active, [data-testid="stFormSubmitButton"] button:focus,
+      [data-testid="stSidebar"] .stButton > button:hover, [data-testid="stSidebar"] .stButton > button:active, [data-testid="stSidebar"] .stButton > button:focus {{
+        background-color: #FFFFFF !important;
+        color: var(--violeta) !important;
+        border-color: var(--violeta) !important;
+      }}
+      .stButton > button:hover *, .stButton > button:active *, .stButton > button:focus *,
+      .stDownloadButton > button:hover *, .stDownloadButton > button:active *, .stDownloadButton > button:focus *,
+      [data-testid="stFormSubmitButton"] button:hover *, [data-testid="stFormSubmitButton"] button:active *,
+      [data-testid="stSidebar"] .stButton > button:hover *, [data-testid="stSidebar"] .stButton > button:active *, [data-testid="stSidebar"] .stButton > button:focus * {{
+        color: var(--violeta) !important;
       }}
     </style>
     """, unsafe_allow_html=True)
@@ -205,9 +276,39 @@ def kpi_card(label: str, value: str, positive: bool | None = None, objetivo: str
         border-radius:14px;
         padding:18px 20px;
         box-shadow:0 2px 8px rgba(11,95,165,0.06);
-        text-align:center;">
+        text-align:center;
+        min-height:140px;
+        display:flex;
+        flex-direction:column;
+        justify-content:center;">
         <div style="font-size:14px;color:{COLORS['azul_oscuro']};opacity:0.75;font-weight:600;">{label}</div>
         <div style="font-size:30px;font-weight:800;color:{color};margin-top:8px;">{value}</div>
         {obj}
     </div>
     """, unsafe_allow_html=True)
+
+
+def sidebar_footer_logo(image_path: str, height_px: int = 100) -> None:
+    """
+    Coloca una imagen (p.ej. madflow.png) al final del sidebar, centrada.
+
+    IMPORTANTE: llamá a esta función DESPUÉS de pg.run() en main.py, para que
+    se dibuje debajo del contenido que agregan las páginas (como los Filtros)
+    y no se solape con ellos.
+
+    height_px: alto del logo. Por defecto 100, igual que el logo superior.
+    """
+    try:
+        data = base64.b64encode(Path(image_path).read_bytes()).decode()
+    except (FileNotFoundError, OSError):
+        return  # si no encuentra la imagen, no rompe la app
+
+    st.sidebar.markdown(
+        f"""
+        <div style="text-align:center; margin-top:28px; padding-bottom:12px;">
+            <img src="data:image/png;base64,{data}"
+                 style="height:{height_px}px; width:auto; display:inline-block;">
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
