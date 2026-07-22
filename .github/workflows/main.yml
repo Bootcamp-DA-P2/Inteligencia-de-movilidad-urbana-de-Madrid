@@ -1,7 +1,10 @@
 name: Ejecutor de Tareas ETL
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Permite ejecutar manualmente y seleccionar la rama
+  push:
+    branches:
+      - develop # Se ejecuta automáticamente cuando subas cambios a develop
   schedule:
     - cron: '0 2 * * *'
 
@@ -23,18 +26,15 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      # 1. Crear la carpeta logs obligatoriamente en la nube
       - name: Crear carpeta de logs
         run: mkdir -p logs
 
-      # 2. Ejecutar los scripts
       - name: Ejecutar Recolector Crudo
         run: python src/etl/recolector_crudo.py
 
       - name: Ejecutar Agregador Horario
         run: python src/etl/agregador_horario.py
 
-      # 3. Descargar los logs desde la web de GitHub si quieres revisarlos
       - name: Subir artefactos de logs
         uses: actions/upload-artifact@v4
         if: always()
