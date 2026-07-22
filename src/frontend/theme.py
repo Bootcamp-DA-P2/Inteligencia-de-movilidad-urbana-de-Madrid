@@ -94,26 +94,34 @@ def apply_theme():
         border-radius:10px;
     }
 
-
-      /* =========================
-      LOGO MADFLOW (st.logo)
-    ========================= */
-
-    [data-testid="stSidebarHeader"]{
-        height:120px !important;
-        padding:0 !important;
-        display:flex !important;
-        align-items:center !important;
-        justify-content:center !important;
+    /* Tamaño texto menú lateral */
+    [data-testid="stSidebarNav"] span {
+        font-size: 18px !important;
+        font-weight: 600;
     }
 
 
-    [data-testid="stSidebarHeader"] img{
-        height:100px !important;
+    /* =========================
+    LOGO MADFLOW (st.logo)
+    ========================= */
+
+    [data-testid="stSidebarHeader"] {
+        height:200px !important;
+        padding:0 !important;
+    }
+
+    [data-testid="stSidebarHeader"] > div {
+        width:100% !important;
+        display:flex !important;
+        justify-content:center !important;
+        align-items:center !important;
+    }
+
+    [data-testid="stSidebarHeader"] img {
+        height:180px !important;
         width:auto !important;
         max-width:none !important;
         object-fit:contain !important;
-        display:block !important;
     }
 
 
@@ -293,7 +301,7 @@ def kpi_card(label: str, value: str, positive: bool | None = None, objetivo: str
         </div>
         """, unsafe_allow_html=True)
 
-def sidebar_footer_logo(image_path: str, height_px: int = 100) -> None:
+def sidebar_footer_logo(image_path: str, height_px: int = 200) -> None:
     """
     Coloca una imagen (p.ej. madflow.png) al final del sidebar, centrada.
 

@@ -75,28 +75,28 @@ else:
         st.Page(
             "views/home.py",
             title="Inicio",
-            icon="🏠",
+            icon=":material/home:",
             default=True
         ),
         st.Page(
             "views/dashboard.py",
-            title="Dashboard histórico",
-            icon="📊"
+            title="Análisis histórico",
+            icon=":material/analytics:"
         ),
         st.Page(
             "views/mobility.py",
-            title="Movilidad Madrid",
-            icon="🚦"
+            title="Movilidad predictiva",
+            icon=":material/auto_graph:"
         ),
         st.Page(
             "views/route.py",
-            title="Ruta Optimizada por Ocupación",
-            icon="🛣️"
+            title="Rutas inteligentes",
+            icon=":material/route:"
         ),
         st.Page(
             "views/about_us.py",
-            title="Sobre Nosotros",
-            icon="🙋🏻"
+            title="Sobre nosotros",
+            icon=":material/groups:"
         ),
     ]
 
