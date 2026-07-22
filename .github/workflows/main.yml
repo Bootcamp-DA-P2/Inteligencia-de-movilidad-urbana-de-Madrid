@@ -22,14 +22,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Instala dependencias e ignora versiones fijas que fallen
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then
-            # Si la instalación estricta falla por una versión errónea,
-            # instala las librerías quitando el fijado estricto (==)
-            pip install -r requirements.txt || sed -i 's/==.*/ /g' requirements.txt && pip install -r requirements.txt
+            # 1. Elimina dependencias exclusivas de Windows del requirements.txt
+            sed -i '/pywin32/d' requirements.txt
+            sed -i '/pywinpty/d' requirements.txt
+            sed -i '/pypiwin32/d' requirements.txt
+            
+            # 2. Instala el resto de librerías limpiando versiones fijas erróneas
+            pip install -r requirements.txt || (sed -i 's/==.*/ /g' requirements.txt && pip install -r requirements.txt)
           fi
 
       - name: Crear carpeta de logs
