@@ -1,6 +1,5 @@
 from django.urls import path
-from .views import TrafficPredictView
-from .views import TrafficSensoresPorDistritoView, EvolucionSensorView, PatronHorarioDistritoView, PatronHorarioM30View, PatronSemanalDistritoView, RankingDistritosView
+from .views import TrafficPredictView, TrafficPredictBatchView, TrafficSensoresPorDistritoView, EvolucionSensorView, PatronHorarioDistritoView, PatronHorarioM30View, PatronSemanalDistritoView, RankingDistritosView
 
 urlpatterns = [
     path('traffic/predict/<int:id_sensor>/', TrafficPredictView.as_view(), name='traffic-predict'),    
@@ -10,4 +9,9 @@ urlpatterns = [
     path('traffic/historico/patron-semanal-distrito/<int:id_distrito>/', PatronSemanalDistritoView.as_view(), name='patron-semanal-distrito'),
     path('traffic/historico/ranking-distritos/', RankingDistritosView.as_view(), name='ranking-distritos'),
     path('traffic/historico/patron-horario-m30/', PatronHorarioM30View.as_view(), name='patron-horario-m30'),
+    path(
+    "traffic/predict/batch/",
+    TrafficPredictBatchView.as_view(),
+    name="traffic-predict-batch",
+),
 ]
