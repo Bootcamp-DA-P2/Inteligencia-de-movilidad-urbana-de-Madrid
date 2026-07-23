@@ -95,7 +95,7 @@ else:
         ),
         st.Page(
             "views/about_us.py",
-            title="Sobre nosotros",
+            title="El Backstage",
             icon=":material/groups:"
         ),
     ]
