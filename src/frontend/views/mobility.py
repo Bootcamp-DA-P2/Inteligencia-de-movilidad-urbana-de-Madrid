@@ -316,12 +316,16 @@ if id_sensor_seleccionado:
                     f"{porcentaje:.1f} %",
                 )
 
+            ultima_hora = data.get("ultima_hora_datos")
+
             if "fila_base" in data["campos_imputados"]:
-                st.warning(" Predicción basada completamente en patrones históricos (no hay datos reales para esa fecha/hora).")
-            elif not data["confiable"]:
-                st.warning(" Predicción con estimación histórica parcial (algunos datos recientes faltan).")
-            else:
-                st.success(" Predicción con datos reales completos.")
+                st.warning(
+                    "Predicción basada en patrones históricos para la fecha y hora seleccionadas."
+                )
+            elif ultima_hora:
+                st.info(
+                    f"Datos actualizados hasta las {ultima_hora}."
+                )
             
             # MOSTRAR SECCIÓN ALTERNATIVA SOLO SI NO ESTÁ MARCADA LA OPCIÓN
             if not usar_fecha_concreta:
