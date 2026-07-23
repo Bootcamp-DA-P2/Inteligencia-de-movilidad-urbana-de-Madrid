@@ -26,6 +26,50 @@ class TrafficPredictView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
         return Response(resultado, status=status.HTTP_200_OK)
 
+class TrafficPredictBatchView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        sensores = request.data.get("sensores", [])
+
+        if not sensores:
+            return Response(
+                {"error": "Debe enviar una lista de sensores."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        fecha_str = request.data.get("fecha")
+        hora = request.data.get("hora")
+
+        fecha_hora = None
+        if fecha_str and hora is not None:
+            try:
+                fecha = datetime.date.fromisoformat(fecha_str)
+                fecha_hora = datetime.datetime.combine(
+                    fecha,
+                    datetime.time(hour=int(hora))
+                )
+            except (ValueError, TypeError):
+                return Response(
+                    {"error": "Formato de fecha u hora inválido."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        resultados = []
+
+        for id_sensor in sensores:
+            try:
+                resultados.append(
+                    predecir_sensor(
+                        int(id_sensor),
+                        fecha_hora=fecha_hora,
+                    )
+                )
+            except Exception:
+                continue
+
+        return Response(resultados, status=status.HTTP_200_OK)
+    
 # Distrito
 class TrafficSensoresPorDistritoView(APIView):
     permission_classes = [AllowAny]
@@ -86,3 +130,4 @@ class PatronHorarioM30View(APIView):
         fecha_inicio = request.query_params.get("desde", "2025-07-01")
         fecha_fin = request.query_params.get("hasta", "2026-06-30")
         return Response(obtener_patron_horario_m30(fecha_inicio, fecha_fin), status=status.HTTP_200_OK)
+
