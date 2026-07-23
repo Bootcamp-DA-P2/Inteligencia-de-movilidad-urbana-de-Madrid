@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 from services.traffic_service import get_prediction, get_sensores_distrito, get_predictions_batch
 import datetime
+import time
 
 from theme import apply_theme, header_banner
 
@@ -28,9 +29,6 @@ DISTRITOS = {
     21: "Barajas",
 }
 
-def marcar_seleccion_activa():
-    st.session_state.seleccion_activa = True
-
 def distancia_metros(lat1, lon1, lat2, lon2) -> float:
     """Distancia en metros entre dos puntos (lat/lon) usando la fórmula de Haversine."""
     R = 6371000  # radio de la Tierra en metros
@@ -42,11 +40,7 @@ def distancia_metros(lat1, lon1, lat2, lon2) -> float:
 
 
 # --- elegir distrito ---
-st.subheader("Selecciona una zona")
-
-st.caption(
-    "Consulta la ocupación prevista del tráfico en cualquier punto de Madrid mediante modelos de inteligencia artificial entrenados con datos oficiales del Ayuntamiento de Madrid."
-)
+st.subheader("Tipo de predicción")
 
 modo_prediccion = st.radio(
     "Tipo de predicción",
@@ -55,9 +49,25 @@ modo_prediccion = st.radio(
         "Fecha futura"
     ],
     horizontal=True,
+    label_visibility="collapsed"
 )
 
+if modo_prediccion == "Tiempo real":
+    st.caption(
+        "Predice la ocupación del tráfico para la próxima hora disponible. "
+        "Por ejemplo, si son las 12:15, la estimación se realizará para las 13:00."
+    )
+else:
+    st.caption(
+        "Selecciona una fecha y hora concreta para consultar la predicción."
+    )
+
 usar_fecha_concreta = modo_prediccion == "Fecha futura"
+
+
+st.divider()
+
+st.subheader("Selecciona una ubicación")
 
 id_distrito = st.selectbox(
     "Distrito",
@@ -67,13 +77,18 @@ id_distrito = st.selectbox(
 
 if "distrito_anterior" not in st.session_state:
     st.session_state.distrito_anterior = id_distrito
+
 if st.session_state.distrito_anterior != id_distrito:
     st.session_state.pop("selectbox_sensor", None)
     st.session_state.pop("click_pendiente", None)
+    st.session_state.pop("mapa_sensores", None)
     st.session_state.seleccion_activa = False
     st.session_state.distrito_anterior = id_distrito
 
 id_sensor_seleccionado = None
+
+if "seleccion_activa" not in st.session_state:
+                st.session_state.seleccion_activa = False
 
 if id_distrito:
     response_sensores = get_sensores_distrito(id_distrito)
@@ -86,9 +101,8 @@ if id_distrito:
         if not sensores:
             st.warning("Este distrito no tiene sensores disponibles.")
         else:
-            st.info(
-                f"Se han encontrado **{len(sensores)} ubicaciones monitorizadas** en **{DISTRITOS[id_distrito]}**.\n\n"
-                "Selecciona una ubicación desde el mapa o desde la lista inferior para generar la predicción."
+            st.caption(
+                f"{len(sensores)} ubicaciones monitorizadas en {DISTRITOS[id_distrito]}."
             )
 
             df = pd.DataFrame(sensores)
@@ -112,31 +126,45 @@ if id_distrito:
             }
             ids_disponibles = list(opciones_sensor.keys())
 
-            # Si hubo un clic pendiente del mapa, aplícalo ANTES de crear el widget
+            if "selectbox_sensor" not in st.session_state:
+                st.session_state.selectbox_sensor = ids_disponibles[0]
+
+
+            # Aplicar selección hecha desde el mapa ANTES del selectbox
             if "click_pendiente" in st.session_state:
-                st.session_state.selectbox_sensor = st.session_state.pop("click_pendiente")
+
+                st.session_state.selectbox_sensor = st.session_state.pop(
+                    "click_pendiente"
+                )
+
+                st.session_state.seleccion_activa = True
+
 
             if st.session_state.get("selectbox_sensor") not in ids_disponibles:
                 st.session_state.pop("selectbox_sensor", None)
+
+
+            def cambiar_desde_lista():
+                st.session_state.seleccion_activa = True
+
 
             id_sensor_seleccionado = st.selectbox(
                 "Ubicación seleccionada",
                 options=ids_disponibles,
                 format_func=lambda x: opciones_sensor[x],
                 key="selectbox_sensor",
-                on_change=marcar_seleccion_activa,
+                on_change=cambiar_desde_lista,
             )
 
-            id_click = id_sensor_seleccionado
-
-            df["seleccionado"] = df["id_sensor"] == id_click
+            
+            df["seleccionado"] = df["id_sensor"] == id_sensor_seleccionado
 
             if st.session_state.get("seleccion_activa"):
                 df["color"] = df["seleccionado"].map({True: "Seleccionado", False: "No elegido"})
             else:
                 df["color"] = "Sensor"
 
-            df["tamano"] = df["seleccionado"].map({True: 22, False: 10})
+            df["tamano"] = df["seleccionado"].map({True: 22, False: 8})
 
             lat_min, lat_max = df["latitud"].min(), df["latitud"].max()
             lon_min, lon_max = df["longitud"].min(), df["longitud"].max()
@@ -152,10 +180,10 @@ if id_distrito:
             zoom_auto = float(max(13.0, min(zoom_calculado, 15.0)))
 
             st.caption(
-                "Haz clic sobre cualquier punto azul del mapa para seleccionar una ubicación."
+                "Selecciona una ubicación haciendo clic en el mapa o desde la lista."
             )
 
-            fig = px.scatter_mapbox(
+            fig = px.scatter_map(
                 df,
                 lat="latitud",
                 lon="longitud",
@@ -175,7 +203,7 @@ if id_distrito:
                 height=500,
             )
             fig.update_layout(
-                mapbox_style="open-street-map",
+                map_style="open-street-map",
                 margin={"r": 0, "t": 0, "l": 0, "b": 0},
                 legend_title_text="",
                 # --- Leyenda movida a arriba a la izquierda y con texto en negro ---
@@ -200,10 +228,13 @@ if id_distrito:
 
             puntos = evento["selection"]["points"] if evento and "selection" in evento else []
             if puntos:
-                nuevo_id = puntos[0]["customdata"][0]
-                if nuevo_id != id_click:
+                nuevo_id = int(puntos[0]["customdata"][0])
+
+                if nuevo_id != st.session_state.get("selectbox_sensor"):
+
                     st.session_state.click_pendiente = nuevo_id
                     st.session_state.seleccion_activa = True
+
                     st.rerun()
 
 st.divider()
@@ -248,15 +279,13 @@ if id_sensor_seleccionado:
     if "mostrar_principal" not in st.session_state:
         st.session_state.mostrar_principal = False
 
-    col1, col2, col3 = st.columns([4, 2, 4])
-
-    with col2:
-        if st.button(
-            "Generar predicción",
-            type="primary",
-            width="content",
-        ):
-            st.session_state.mostrar_principal = True
+    
+    if st.button(
+        "Generar predicción",
+        type="primary",
+        width="content",
+    ):
+        st.session_state.mostrar_principal = True
            
 
     # Mostrar la predicción
@@ -297,7 +326,7 @@ if id_sensor_seleccionado:
             # MOSTRAR SECCIÓN ALTERNATIVA SOLO SI NO ESTÁ MARCADA LA OPCIÓN
             if not usar_fecha_concreta:
                 st.divider()
-                st.subheader("🛣️ Rutas alternativas")
+                st.subheader("Rutas alternativas")
 
                 st.caption(
                     "MadFlow ha identificado automáticamente las calles cercanas con menor congestión prevista para ayudarte a evitar retenciones."
@@ -339,7 +368,7 @@ if id_sensor_seleccionado:
                         # Obtener todas las predicciones de una sola vez
                         ids_sensores = [s["id_sensor"] for _, s in mas_cercanos]
 
-                        with st.spinner("Buscando las mejores rutas alternativas..."):
+                        with st.spinner("Espere unos momentos mientras analizamos las mejores alternativas de movilidad..."):
                             resp_batch = get_predictions_batch(ids_sensores)
 
                         predicciones = {}

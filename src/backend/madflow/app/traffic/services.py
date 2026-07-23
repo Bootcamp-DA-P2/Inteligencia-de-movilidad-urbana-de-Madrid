@@ -4,6 +4,7 @@ import joblib
 import pandas as pd
 import duckdb
 import datetime
+from functools import lru_cache
 
 UMBRAL_BAJO_MEDIO = 1.0
 UMBRAL_MEDIO_ALTO = 4.06
@@ -29,6 +30,7 @@ def _get_modelo():
         _modelo = joblib.load(MODELO_PATH)
     return _modelo
 
+@lru_cache(maxsize=5000)
 def predecir_sensor(id_sensor: int, fecha_hora: datetime.datetime | None = None) -> dict:
     fila, imputados = construir_fila_features(id_sensor, fecha_hora_objetivo=fecha_hora)
 
