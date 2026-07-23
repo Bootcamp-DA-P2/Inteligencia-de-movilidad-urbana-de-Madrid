@@ -7,6 +7,7 @@ def load_config():
     config = {
         'URL_AUTH': os.getenv('URL_AUTH'),
         'URL_TRAFFIC': os.getenv('URL_TRAFFIC'),
+        'GROQ_API_KEY': os.getenv('GROQ_API_KEY'),
     }
     return config
 

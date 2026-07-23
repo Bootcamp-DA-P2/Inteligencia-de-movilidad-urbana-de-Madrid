@@ -94,6 +94,11 @@ else:
             icon=":material/route:"
         ),
         st.Page(
+                    "views/chat_bot.py",
+                    title="MAD-Bot",
+                    icon=":material/route:"
+                ),
+        st.Page(
             "views/about_us.py",
             title="El Backstage",
             icon=":material/groups:"
