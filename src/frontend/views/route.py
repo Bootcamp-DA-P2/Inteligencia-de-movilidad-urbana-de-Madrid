@@ -359,75 +359,70 @@ else:
     st.plotly_chart(fig_select, width="stretch")
 
 
-    # --- 1. CONFIGURACIÓN Y CONSTANTE DE TRÁFICO ---
-    # Factor fijo para equilibrar distancia y congestión
+   # --- 1. CONFIGURACIÓN Y CONSTANTE DE TRÁFICO ---
     FACTOR_TRAFICO_FIJO = 8.0
 
-    # --- 2. CÁLCULO DE LA RUTA (SIN SLIDER) ---
-col1, col2, col3 = st.columns([4, 2, 4])
-with col2:
-    btn_calcular = st.button("Calcular Ruta Optimizada", type="primary", width="content")
+    # --- 2. CÁLCULO DE LA RUTA (BOTÓN ALINEADO A LA IZQUIERDA) ---
+    st.write("")  # Espaciador
+    btn_calcular = st.button("Calcular Ruta", type="primary", use_container_width=False)
 
-if btn_calcular:
-    sensor_origen = dict_sensores[st.session_state.sel_origen]
-    sensor_destino = dict_sensores[st.session_state.sel_destino]
+    if btn_calcular:
+        sensor_origen = dict_sensores[st.session_state.sel_origen]
+        sensor_destino = dict_sensores[st.session_state.sel_destino]
 
-    lat_o, lon_o = float(sensor_origen["latitud"]), float(sensor_origen["longitud"])
-    lat_d, lon_d = float(sensor_destino["latitud"]), float(sensor_destino["longitud"])
+        lat_o, lon_o = float(sensor_origen["latitud"]), float(sensor_origen["longitud"])
+        lat_d, lon_d = float(sensor_destino["latitud"]), float(sensor_destino["longitud"])
 
-    ruta_nodos = None
-    grafo = None
-    grafo_ponderado = None
-    intentos_previos_ocupacion: dict[int, float | None] = {}
+        ruta_nodos = None
+        grafo = None
+        grafo_ponderado = None
 
-    for factor_margen in (0.4, 0.8, 1.5):
-        with st.spinner("Calculando la trayectoria óptima por la red vial..."):
-            north, south, east, west = calcular_bbox_corredor(
-                lat_o, lon_o, lat_d, lon_d, factor_margen=factor_margen
-            )
+        for factor_margen in (0.4, 0.8, 1.5):
+            with st.spinner("Calculando la trayectoria óptima por la red vial..."):
+                north, south, east, west = calcular_bbox_corredor(
+                    lat_o, lon_o, lat_d, lon_d, factor_margen=factor_margen
+                )
 
-            grafo = cargar_grafo_calles(north, south, east, west)
+                grafo = cargar_grafo_calles(north, south, east, west)
 
-            nodo_origen = ox.distance.nearest_nodes(grafo, lon_o, lat_o)
-            nodo_destino = ox.distance.nearest_nodes(grafo, lon_d, lat_d)
+                nodo_origen = ox.distance.nearest_nodes(grafo, lon_o, lat_o)
+                nodo_destino = ox.distance.nearest_nodes(grafo, lon_d, lat_d)
 
-            try:
-                ruta_actual = nx.dijkstra_path(grafo, nodo_origen, nodo_destino, weight="length")
-            except nx.NetworkXNoPath:
-                ruta_actual = None
+                try:
+                    ruta_actual = nx.dijkstra_path(grafo, nodo_origen, nodo_destino, weight="length")
+                except nx.NetworkXNoPath:
+                    ruta_actual = None
 
-            if ruta_actual is None:
-                continue
+                if ruta_actual is None:
+                    continue
 
-            sensores_cercanos = sensores_relevantes_para_ruta(sensores_disponibles, grafo, ruta_actual)
-            obtener_ocupaciones_sensores(sensores_cercanos)
+                sensores_cercanos = sensores_relevantes_para_ruta(sensores_disponibles, grafo, ruta_actual)
+                
+                # Obtener diccionario de ocupaciones reales en la zona
+                ocupaciones_dict = obtener_ocupaciones_sensores(sensores_cercanos)
 
-            sensores_con_dato = [
-                s for s in sensores_disponibles
-                if intentos_previos_ocupacion.get(s["id_sensor"]) is not None
-            ]
-            ocupacion_por_arista = calcular_ocupacion_por_arista(
-                grafo, sensores_con_dato, intentos_previos_ocupacion
-            )
-            
-            # Usamos el factor fijo de tráfico directamente
-            grafo_ponderado = construir_grafo_ponderado(grafo, ocupacion_por_arista, FACTOR_TRAFICO_FIJO)
+                # Calcular pesos asignando la ocupación
+                ocupacion_por_arista = calcular_ocupacion_por_arista(
+                    grafo, sensores_disponibles, ocupaciones_dict
+                )
+                
+                grafo_ponderado = construir_grafo_ponderado(grafo, ocupacion_por_arista, FACTOR_TRAFICO_FIJO)
 
-            ruta_nodos = nx.dijkstra_path(grafo_ponderado, nodo_origen, nodo_destino, weight="weight")
-            break
+                ruta_nodos = nx.dijkstra_path(grafo_ponderado, nodo_origen, nodo_destino, weight="weight")
+                break
 
-    if ruta_nodos is not None:
-        st.session_state.ruta_nodos = ruta_nodos
-        st.session_state.grafo_ruta = grafo_ponderado
-        st.session_state.grafo_nodos_coords = {
-            n: (d["y"], d["x"]) for n, d in grafo.nodes(data=True)
-        }
-        st.session_state.coords_origen_real = (lat_o, lon_o)
-        st.session_state.coords_destino_real = (lat_d, lon_d)
-        st.session_state.pop("ruta_sin_camino", None)
-    else:
-        st.session_state.pop("ruta_nodos", None)
-        st.session_state.ruta_sin_camino = True
+        if ruta_nodos is not None:
+            st.session_state.ruta_nodos = ruta_nodos
+            st.session_state.grafo_ruta = grafo_ponderado
+            st.session_state.grafo_nodos_coords = {
+                n: (d["y"], d["x"]) for n, d in grafo.nodes(data=True)
+            }
+            st.session_state.coords_origen_real = (lat_o, lon_o)
+            st.session_state.coords_destino_real = (lat_d, lon_d)
+            st.session_state.pop("ruta_sin_camino", None)
+        else:
+            st.session_state.pop("ruta_nodos", None)
+            st.session_state.ruta_sin_camino = True
 
 # --- 3. TABLA DE RESULTADOS CON PORCENTAJE DE SATURACIÓN ---
 if "ruta_nodos" in st.session_state:
