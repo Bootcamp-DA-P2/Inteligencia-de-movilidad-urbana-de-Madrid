@@ -86,7 +86,7 @@ dim_elena = {
     "fk": "idElena: INT (FK)",
     "name": "Elena Suárez",
     "role": "Software Dev & Data Analyst",
-    "hobby": "¡MadFlow, yo te elijo! Entrena modelos de Machine Learning y captura excepciones como si fueran Pokémons legendarios.",
+    "hobby": "¡MadFlow, yo te elijo! Entrena modelos de Machine Learning y captura excepciones como si fueran Pokémon legendarios.",
     "url": "https://www.linkedin.com/in/elena-suarez-dev/",
     "img": resolve_img_src("assets/equipo/elena-suarez-dev.png"),
     "conector_pos": "bottom" # Conecta hacia abajo
