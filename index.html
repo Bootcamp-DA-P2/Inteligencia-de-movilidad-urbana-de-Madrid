@@ -37,7 +37,7 @@
   .wrap{width:min(1180px,92vw);margin-inline:auto}
   section{padding:clamp(64px,9vw,120px) 0}
   h1,h2,h3{font-family:var(--display);margin:0;line-height:1.05;letter-spacing:-.02em}
-  a{color:inherit}
+  a{color:inherit;text-decoration:none}
 
   /* eyebrow: etiqueta de sección en mono */
   .eyebrow{
@@ -53,7 +53,7 @@
   }
   .nav-in{display:flex;align-items:center;justify-content:space-between;padding:14px 0}
   .brand{display:flex;align-items:center;gap:12px;text-decoration:none}
-  .brand img{height:38px;width:auto;display:block;background:#fff;border-radius:9px;padding:5px 8px}
+  .brand img{height:38px;width:auto;display:block;background:#fff;border-radius:99px;padding:5px 8px}
   .brand span{font-family:var(--display);font-weight:800;color:#fff;font-size:19px;letter-spacing:-.01em}
   .nav a.link{color:#C8DBF0;text-decoration:none;font-size:15px;margin-left:28px}
   .nav a.link:hover{color:#fff}
@@ -180,17 +180,20 @@
   .team-sec .kicker{color:#fff}
   .team-sec .sub{color:#B4CCE4}
   .team{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:18px;margin-top:46px}
-  .member{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);
-    border-radius:18px;padding:28px 22px;text-align:center;transition:transform .22s,background .22s}
+  .member{
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);
+    border-radius:18px;padding:28px 22px;text-align:center;transition:transform .22s,background .22s;
+    text-decoration:none;display:block;
+  }
   .member:hover{transform:translateY(-5px);background:rgba(255,255,255,.11)}
   .mono-badge{width:104px;height:104px;margin:0 auto 16px;border-radius:50%;
     padding:3px;background:linear-gradient(135deg,var(--madrid),var(--lilac))}
   .member:nth-child(2n) .mono-badge{background:linear-gradient(135deg,var(--lilac),var(--rose))}
   .mono-badge img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;
     background:var(--ice)}
-  .member h3{font-size:1.1rem;color:#fff}
+  .member h3{font-size:1.1rem;color:#fff;text-decoration:none}
   .member p{margin:7px 0 0;font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;
-    text-transform:uppercase;color:#8FB2D4}
+    text-transform:uppercase;color:#8FB2D4;text-decoration:none}
 
   footer{background:var(--night-2);color:#9FC0DE;padding:38px 0;font-size:14px}
   .foot-in{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;align-items:center}
@@ -359,28 +362,27 @@
       la ingesta, el modelo, la aplicación y la visualización, y lo montamos todo sobre un
       mismo repositorio.
     </p>
-    <!-- Para añadir el rol de cada persona, cambia el texto del <p> de su tarjeta -->
     <div class="team">
-      <div class="member">
+      <a class="member" href="https://www.linkedin.com/in/ana-paula-montiel-923386378/" target="_blank" rel="noopener noreferrer">
         <div class="mono-badge"><img src="assets/equipo/ana-paula-montiel-923386378.png" alt="Ana Paula" loading="lazy"></div>
         <h3>Ana Paula</h3><p>MadFlow</p>
-      </div>
-      <div class="member">
+      </a>
+      <a class="member" href="https://www.linkedin.com/in/irene-condado/" target="_blank" rel="noopener noreferrer">
         <div class="mono-badge"><img src="assets/equipo/irene-condado.jpg" alt="Irene" loading="lazy"></div>
         <h3>Irene</h3><p>MadFlow</p>
-      </div>
-      <div class="member">
+      </a>
+      <a class="member" href="https://www.linkedin.com/in/jose-carlos-de-santiago-sanchez-12b855408/" target="_blank" rel="noopener noreferrer">
         <div class="mono-badge"><img src="assets/equipo/jose-carlos-de-santiago-sanchez-12b855408.png" alt="Jose Carlos" loading="lazy"></div>
         <h3>Jose Carlos</h3><p>MadFlow</p>
-      </div>
-      <div class="member">
+      </a>
+      <a class="member" href="https://www.linkedin.com/in/elena-suarez-dev/" target="_blank" rel="noopener noreferrer">
         <div class="mono-badge"><img src="assets/equipo/elena-suarez-dev.png" alt="Elena" loading="lazy"></div>
         <h3>Elena</h3><p>MadFlow</p>
-      </div>
-      <div class="member">
+      </a>
+      <a class="member" href="https://www.linkedin.com/in/daniel-luque-gallardo/" target="_blank" rel="noopener noreferrer">
         <div class="mono-badge"><img src="assets/equipo/daniel-luque-gallardo.jpg" alt="Daniel" loading="lazy"></div>
         <h3>Daniel</h3><p>MadFlow</p>
-      </div>
+      </a>
     </div>
   </div>
 </section>
