@@ -2,38 +2,26 @@ import math
 import streamlit as st
 import pandas as pd
 import numpy as np
-import base64
 import plotly.express as px
 import plotly.graph_objects as go
 import osmnx as ox
 import networkx as nx
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from services.traffic_service import get_prediction, get_sensores_distrito
-
-def svg_to_data_uri(svg_str: str) -> str:
-    """Convierte una cadena SVG a Base64 seguro para HTML."""
-    b64 = base64.b64encode(svg_str.encode('utf-8')).decode('utf-8')
-    return f"data:image/svg+xml;base64,{b64}"
-
-# Definición de SVGs limpios
-SVG_ORIGEN_STR = """<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='#EF4444'><path d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/></svg>"""
-SVG_DESTINO_STR = """<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='#10B981'><path d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/></svg>"""
-SVG_RUTA_STR = """<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='#1D4ED8'><path d='M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z'/></svg>"""
-
-SVG_ORIGEN = svg_to_data_uri(SVG_ORIGEN_STR)
-SVG_DESTINO = svg_to_data_uri(SVG_DESTINO_STR)
-SVG_RUTA = svg_to_data_uri(SVG_RUTA_STR)
-
-st.set_page_config(page_title="{SVG_RUTA} Ruta Inteligente de Tráfico", layout="wide")
-
-# Mensaje de cabecera limpio
-st.title("🗺️ Planificador de Ruta Inteligente")
-st.markdown("Optimiza tu trayecto evitando tramos con alta densidad de tráfico en tiempo real.")
+from services.traffic_service import get_predictions_batch, get_sensores_distrito
 from theme import apply_theme, header_banner
+
+# --- 1. CONFIGURACIÓN Y TEMA ---
+st.set_page_config(page_title="MadFlow - Ruta Inteligente", layout="wide")
 apply_theme()
 header_banner("MadFlow: Ruta Optimizada", "Mejor recorrido según la ocupación")
 
-st.title("🛣️ Ruta Optimizada por Ocupación")
+# --- 2. TARJETA EXPLICATIVA CABECERA ---
+with st.container(border=True):
+    st.markdown("### Planificador de Ruta Inteligente")
+    st.markdown("""
+Calcula el mejor recorrido entre dos puntos evitando los tramos con mayor congestión en tiempo real.
+
+MadFlow analiza la red vial y combina datos de ocupación de sensores cercanos para sugerir la trayectoria óptima.
+""")
 
 DISTRITOS = {
     1: "Centro", 2: "Arganzuela", 3: "Retiro", 4: "Salamanca", 5: "Chamartín",
@@ -44,17 +32,13 @@ DISTRITOS = {
     21: "Barajas",
 }
 
-# Constantes visuales
-ESTADO_ORIGEN = "Origen Seleccionado"
-ESTADO_DESTINO = "Destino Seleccionado"
-ESTADO_DISPONIBLE = "Sensor Disponible"
+# Constantes visuales de color
+COLOR_ORIGEN = "#EF4444"      # Rojo
+COLOR_DESTINO = "#10B981"     # Verde
+COLOR_DISPONIBLE = "#93C5FD"  # Azul claro
+COLOR_RUTA = "#1D4ED8"        # Azul oscuro
 
-COLOR_ORIGEN = "#EF4444"      
-COLOR_DESTINO = "#10B981"     
-COLOR_DISPONIBLE = "#93C5FD"  
-COLOR_RUTA = "#1D4ED8"        
-
-
+# --- FUNCIONES AUXILIARES Y CÁLCULOS ---
 def distancia_metros(lat1, lon1, lat2, lon2) -> float:
     """Distancia en metros entre dos puntos usando Haversine."""
     R = 6371000
@@ -78,7 +62,6 @@ def cargar_todos_los_sensores():
     return todos
 
 
-@st.cache_resource(show_spinner="Preparando mapa base del callejero...")
 def cargar_grafo_calles(north: float, south: float, east: float, west: float):
     return ox.graph_from_bbox(
         bbox=(west, south, east, north),
@@ -102,74 +85,70 @@ def calcular_bbox_corredor(lat1, lon1, lat2, lon2, factor_margen=0.4, margen_min
     return north, south, east, west
 
 
-def obtener_ocupaciones_sensores(
-    sensores: list[dict],
-    intentos_previos: dict[int, float | None] | None = None,
-) -> dict[int, float | None]:
+def obtener_ocupaciones_sensores(sensores: list[dict]) -> dict[int, float | None]:
+    """Obtiene de golpe las ocupaciones de los sensores disponibles."""
     ocupaciones = {}
     if not sensores:
         return ocupaciones
 
-    if intentos_previos is None:
-        intentos_previos = {}
     cache_sesion = st.session_state.setdefault("cache_predicciones_sensores", {})
+    ids_buscar = []
 
-    pendientes = []
     for s in sensores:
         id_s = s["id_sensor"]
-        if id_s in intentos_previos:
-            ocupaciones[id_s] = intentos_previos[id_s]
-        elif id_s in cache_sesion:
+        if id_s in cache_sesion:
             ocupaciones[id_s] = cache_sesion[id_s]
         else:
-            pendientes.append(s)
+            ids_buscar.append(int(id_s))
 
-    if not pendientes:
-        return ocupaciones
-
-    def predecir(s):
-        id_s = s["id_sensor"]
+    if ids_buscar:
         try:
-            resp = get_prediction(int(id_s))
+            resp = get_predictions_batch(ids_buscar)
             if resp.status_code == 200:
-                return id_s, resp.json()["prediccion_ocupacion"], None
-            return id_s, None, f"HTTP {resp.status_code}"
-        except Exception as e:
-            return id_s, None, str(e)
+                data = resp.json()
+                preds = data.get("predicciones", {}) if isinstance(data, dict) else {}
+                for id_s in ids_buscar:
+                    item = preds.get(id_s) or preds.get(str(id_s))
+                    valor = item.get("prediccion_ocupacion") if isinstance(item, dict) else item
+                    
+                    # Convertir a float si es válido
+                    try:
+                        valor_float = float(valor) if valor is not None else None
+                    except (ValueError, TypeError):
+                        valor_float = None
 
-    progreso = st.progress(0, text="Analizando estado del tráfico en tiempo real...")
-    completados = 0
+                    ocupaciones[id_s] = valor_float
+                    cache_sesion[id_s] = valor_float
+        except Exception:
+            for id_s in ids_buscar:
+                ocupaciones[id_s] = None
 
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        futuros = [executor.submit(predecir, s) for s in pendientes]
-        for futuro in as_completed(futuros):
-            id_s, valor, error = futuro.result()
-            ocupaciones[id_s] = valor
-            intentos_previos[id_s] = valor
-            if valor is not None:
-                cache_sesion[id_s] = valor
-            completados += 1
-            progreso.progress(completados / len(pendientes), text=f"Analizando tráfico en la zona... ({completados}/{len(pendientes)})")
-
-    progreso.empty()
     return ocupaciones
 
 
 def calcular_ocupacion_por_arista(grafo, sensores: list[dict], ocupaciones: dict[int, float | None]) -> dict:
-    coords_sensores = [
-        (float(s["latitud"]), float(s["longitud"]), ocupaciones[s["id_sensor"]], s["id_sensor"])
-        for s in sensores
-        if s.get("latitud") is not None
+    """Asigna a CADA tramo del callejero el sensor y ocupación más cercanos sin dejar ninguno vacío."""
+    sensores_validos = [
+        s for s in sensores
+        if s.get("latitud") is not None 
         and s.get("longitud") is not None
         and ocupaciones.get(s["id_sensor"]) is not None
     ]
-    if not coords_sensores:
+    
+    # Si no hay sensores con predicción directa, usamos valores por defecto o base
+    if not sensores_validos:
+        sensores_validos = [
+            s for s in sensores 
+            if s.get("latitud") is not None and s.get("longitud") is not None
+        ]
+
+    if not sensores_validos:
         return {}
 
-    lat_s = np.radians(np.array([c[0] for c in coords_sensores]))
-    lon_s = np.radians(np.array([c[1] for c in coords_sensores]))
-    ocup_s = np.array([c[2] for c in coords_sensores])
-    id_s_arr = np.array([c[3] for c in coords_sensores])
+    lat_s = np.radians(np.array([float(s["latitud"]) for s in sensores_validos]))
+    lon_s = np.radians(np.array([float(s["longitud"]) for s in sensores_validos]))
+    ocup_s = np.array([ocupaciones.get(s["id_sensor"], 15.0) or 15.0 for s in sensores_validos])
+    id_s_arr = np.array([s["id_sensor"] for s in sensores_validos])
 
     pares = list(dict.fromkeys(grafo.edges()))
     lat_mid = np.radians(np.array([(grafo.nodes[u]["y"] + grafo.nodes[v]["y"]) / 2 for u, v in pares]))
@@ -205,7 +184,7 @@ def sensores_relevantes_para_ruta(sensores: list[dict], grafo, ruta_nodos: list,
     return relevantes
 
 
-def construir_grafo_ponderado(grafo, ocupacion_por_arista: dict, factor_trafico: float) -> nx.DiGraph:
+def construir_grafo_ponderado(grafo, ocupacion_por_arista: dict, FACTOR_TRAFICO_FIJO: float) -> nx.DiGraph:
     grafo_ponderado = nx.DiGraph()
     grafo_ponderado.add_nodes_from(grafo.nodes(data=True))
 
@@ -214,7 +193,7 @@ def construir_grafo_ponderado(grafo, ocupacion_por_arista: dict, factor_trafico:
         info_tramo = ocupacion_por_arista.get((u, v))
         ocupacion_tramo = info_tramo["ocupacion"] if info_tramo else None
         id_sensor_tramo = info_tramo["id_sensor"] if info_tramo else None
-        peso = longitud_tramo * (1 + ((ocupacion_tramo or 0.0) / 100) * factor_trafico)
+        peso = longitud_tramo * (1 + ((ocupacion_tramo or 0.0) / 100) * FACTOR_TRAFICO_FIJO)
 
         nombre_calle = datos.get("name", "Calle sin nombre")
         if isinstance(nombre_calle, list):
@@ -237,9 +216,12 @@ def construir_grafo_ponderado(grafo, ocupacion_por_arista: dict, factor_trafico:
     return grafo_ponderado
 
 
-# --- 1. SELECCIÓN DE ÁMBITO ---
+# --- 3. SELECCIÓN DE ÁMBITO Y CONFIGURACIÓN ---
+st.subheader("Configura tu trayecto")
+st.caption("Selecciona el ámbito de búsqueda y establece los puntos de origen y destino.")
+
 modo_ambito = st.radio(
-    "Selecciona el área de búsqueda:",
+    "Área de búsqueda",
     options=["Madrid Completo", "Por Distrito"],
     horizontal=True,
     key="modo_ambito_radio"
@@ -249,7 +231,7 @@ sensores_disponibles = []
 
 if modo_ambito == "Por Distrito":
     id_distrito = st.selectbox(
-        "Selecciona un Distrito",
+        "Distrito",
         options=list(DISTRITOS.keys()),
         format_func=lambda x: f"{x} - {DISTRITOS[x]}",
         key="ruta_distrito_selectbox"
@@ -280,42 +262,37 @@ else:
     if st.session_state.get("sel_destino") not in dict_sensores:
         st.session_state.sel_destino = sensores_disponibles[min(1, len(sensores_disponibles)-1)]["id_sensor"]
 
-    # --- 2. DESPLEGABLES DE SELECCIÓN CON ICONOS SVG ---
+    # --- DESPLEGABLES LIMPIOS ---
     col1, col2 = st.columns(2)
 
-    @st.cache_data(ttl=3600)
     def generar_nombres_sensores(sensores):
         nombres = {}
         for s in sensores:
             id_s = s["id_sensor"]
             nombre = s.get("nombre_calle") or s.get("nombre_norm") or f"Punto #{id_s}"
-            nombres[id_s] = f'{nombre.capitalize()} (Sensor #{id_s})'
+            nombres[id_s] = f'{nombre.capitalize()} (#{id_s})'
         return nombres
 
     nombres_desplegable = generar_nombres_sensores(sensores_disponibles)
 
     with col1:
-        st.markdown(f"### <img src='{SVG_ORIGEN}' style='vertical-align: middle; margin-right: 8px;'/> Punto de Origen", unsafe_allow_html=True)
         sensor_origen_id = st.selectbox(
-            "Origen",
+            "Punto de Origen",
             options=list(dict_sensores.keys()),
             format_func=lambda x: nombres_desplegable.get(x, f"Sensor #{x}"),
-            key="sel_origen",
-            label_visibility="collapsed"
+            key="sel_origen"
         )
 
     with col2:
-        st.markdown(f"### <img src='{SVG_DESTINO}' style='vertical-align: middle; margin-right: 8px;'/> Punto de Destino", unsafe_allow_html=True)
         opciones_dest = [ids for ids in dict_sensores.keys() if ids != st.session_state.sel_origen]
         sensor_destino_id = st.selectbox(
-            "Destino",
+            "Punto de Destino",
             options=opciones_dest,
             format_func=lambda x: nombres_desplegable.get(x, f"Sensor #{x}"),
-            key="sel_destino",
-            label_visibility="collapsed"
+            key="sel_destino"
         )
 
-    # --- 3. MAPA GLOBAL DE PREVISUALIZACIÓN ---
+    # --- MAPA BASE DE PREVISUALIZACIÓN ---
     df_seleccion = pd.DataFrame(sensores_disponibles)
     df_seleccion["latitud"] = pd.to_numeric(df_seleccion["latitud"], errors="coerce")
     df_seleccion["longitud"] = pd.to_numeric(df_seleccion["longitud"], errors="coerce")
@@ -323,10 +300,10 @@ else:
 
     def asignar_estado(id_s):
         if id_s == st.session_state.sel_origen:
-            return ESTADO_ORIGEN
+            return "Origen"
         if id_s == st.session_state.sel_destino:
-            return ESTADO_DESTINO
-        return ESTADO_DISPONIBLE
+            return "Destino"
+        return "Disponible"
 
     df_seleccion["Estado"] = df_seleccion["id_sensor"].apply(asignar_estado)
 
@@ -338,7 +315,7 @@ else:
         df_mapa_prev = df_seleccion.copy()
 
     df_mapa_prev["tamano"] = df_mapa_prev["id_sensor"].apply(
-        lambda x: 20 if (x == st.session_state.sel_origen or x == st.session_state.sel_destino) else 10
+        lambda x: 22 if (x == st.session_state.sel_origen or x == st.session_state.sel_destino) else 10
     )
     df_mapa_prev["Calle"] = df_mapa_prev["nombre_calle"].fillna(df_mapa_prev["nombre_norm"]).fillna("Calle sin identificar")
 
@@ -348,238 +325,254 @@ else:
         lon="longitud",
         color="Estado",
         size="tamano",
-        size_max=20,
+        size_max=22,
         hover_name="Calle",
         hover_data={
             "id_sensor": True,
             "Estado": True,
-            "latitud": ":.5f",
-            "longitud": ":.5f",
+            "latitud": False,
+            "longitud": False,
             "tamano": False,
         },
         color_discrete_map={
-            ESTADO_ORIGEN: COLOR_ORIGEN,
-            ESTADO_DESTINO: COLOR_DESTINO,
-            ESTADO_DISPONIBLE: COLOR_DISPONIBLE
+            "Origen": COLOR_ORIGEN,
+            "Destino": COLOR_DESTINO,
+            "Disponible": COLOR_DISPONIBLE
         },
         center={"lat": df_mapa_prev["latitud"].mean(), "lon": df_mapa_prev["longitud"].mean()},
         zoom=12 if modo_ambito == "Madrid Completo" else 13,
         height=380,
     )
-    fig_select.update_layout(mapbox_style="open-street-map", margin={"r": 0, "t": 0, "l": 0, "b": 0})
+    fig_select.update_layout(
+        mapbox_style="open-street-map",
+        margin={"r": 0, "t": 0, "l": 0, "b": 0},
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=0.98,
+            xanchor="left",
+            x=0.02,
+            bgcolor="rgba(255, 255, 255, 0.6)",
+            font=dict(color="black")
+        )
+    )
     st.plotly_chart(fig_select, width="stretch")
 
-    # --- 4. ALGORITMO DE RUTA REAL ---
-    st.markdown("---")
-    factor_trafico = st.slider(
-        "Sensibilidad al tráfico (a mayor valor, la ruta evitará en mayor medida las retenciones):",
-        min_value=0.0,
-        max_value=30.0,
-        value=8.0,
-        step=1.0,
-        help="0 calcula la distancia geométrica más corta. Valores altos priorizan calles más fluídas."
+
+    # --- 1. CONFIGURACIÓN Y CONSTANTE DE TRÁFICO ---
+    # Factor fijo para equilibrar distancia y congestión
+    FACTOR_TRAFICO_FIJO = 8.0
+
+    # --- 2. CÁLCULO DE LA RUTA (SIN SLIDER) ---
+col1, col2, col3 = st.columns([4, 2, 4])
+with col2:
+    btn_calcular = st.button("Calcular Ruta Optimizada", type="primary", width="content")
+
+if btn_calcular:
+    sensor_origen = dict_sensores[st.session_state.sel_origen]
+    sensor_destino = dict_sensores[st.session_state.sel_destino]
+
+    lat_o, lon_o = float(sensor_origen["latitud"]), float(sensor_origen["longitud"])
+    lat_d, lon_d = float(sensor_destino["latitud"]), float(sensor_destino["longitud"])
+
+    ruta_nodos = None
+    grafo = None
+    grafo_ponderado = None
+    intentos_previos_ocupacion: dict[int, float | None] = {}
+
+    for factor_margen in (0.4, 0.8, 1.5):
+        with st.spinner("Calculando la trayectoria óptima por la red vial..."):
+            north, south, east, west = calcular_bbox_corredor(
+                lat_o, lon_o, lat_d, lon_d, factor_margen=factor_margen
+            )
+
+            grafo = cargar_grafo_calles(north, south, east, west)
+
+            nodo_origen = ox.distance.nearest_nodes(grafo, lon_o, lat_o)
+            nodo_destino = ox.distance.nearest_nodes(grafo, lon_d, lat_d)
+
+            try:
+                ruta_actual = nx.dijkstra_path(grafo, nodo_origen, nodo_destino, weight="length")
+            except nx.NetworkXNoPath:
+                ruta_actual = None
+
+            if ruta_actual is None:
+                continue
+
+            sensores_cercanos = sensores_relevantes_para_ruta(sensores_disponibles, grafo, ruta_actual)
+            obtener_ocupaciones_sensores(sensores_cercanos)
+
+            sensores_con_dato = [
+                s for s in sensores_disponibles
+                if intentos_previos_ocupacion.get(s["id_sensor"]) is not None
+            ]
+            ocupacion_por_arista = calcular_ocupacion_por_arista(
+                grafo, sensores_con_dato, intentos_previos_ocupacion
+            )
+            
+            # Usamos el factor fijo de tráfico directamente
+            grafo_ponderado = construir_grafo_ponderado(grafo, ocupacion_por_arista, FACTOR_TRAFICO_FIJO)
+
+            ruta_nodos = nx.dijkstra_path(grafo_ponderado, nodo_origen, nodo_destino, weight="weight")
+            break
+
+    if ruta_nodos is not None:
+        st.session_state.ruta_nodos = ruta_nodos
+        st.session_state.grafo_ruta = grafo_ponderado
+        st.session_state.grafo_nodos_coords = {
+            n: (d["y"], d["x"]) for n, d in grafo.nodes(data=True)
+        }
+        st.session_state.coords_origen_real = (lat_o, lon_o)
+        st.session_state.coords_destino_real = (lat_d, lon_d)
+        st.session_state.pop("ruta_sin_camino", None)
+    else:
+        st.session_state.pop("ruta_nodos", None)
+        st.session_state.ruta_sin_camino = True
+
+# --- 3. TABLA DE RESULTADOS CON PORCENTAJE DE SATURACIÓN ---
+if "ruta_nodos" in st.session_state:
+    ruta_nodos = st.session_state.ruta_nodos
+    grafo_ruta = st.session_state.grafo_ruta
+    coords_nodos = st.session_state.grafo_nodos_coords
+    lat_o_real, lon_o_real = st.session_state.coords_origen_real
+    lat_d_real, lon_d_real = st.session_state.coords_destino_real
+
+    sensor_origen = dict_sensores[st.session_state.sel_origen]
+    sensor_destino = dict_sensores[st.session_state.sel_destino]
+
+    st.divider()
+    st.subheader("Resultado de la Ruta")
+
+    # Mensaje descriptivo indicando que se ha contemplado la ocupación
+    st.success(
+        "**Ruta optimizada calculada:** El trazado se ha generado evaluando los niveles "
+        "de ocupación y congestión en tiempo real para ofrecerte la vía más fluida."
     )
 
-    if st.button("Calcular Ruta Optimizada", type="primary", width="stretch"):
-        sensor_origen = dict_sensores[st.session_state.sel_origen]
-        sensor_destino = dict_sensores[st.session_state.sel_destino]
+    tramos = []
+    distancia_total = 0.0
+    for u, v in zip(ruta_nodos[:-1], ruta_nodos[1:]):
+        datos = grafo_ruta[u][v]
+        nombre = datos.get("name") or "Calle sin nombre"
+        longitud = datos.get("length", 0.0)
+        ocupacion = datos.get("ocupacion")
+        id_sensor_edge = datos.get("id_sensor")
+        distancia_total += longitud
 
-        lat_o, lon_o = float(sensor_origen["latitud"]), float(sensor_origen["longitud"])
-        lat_d, lon_d = float(sensor_destino["latitud"]), float(sensor_destino["longitud"])
-
-        ruta_nodos = None
-        grafo = None
-        grafo_ponderado = None
-        intentos_previos_ocupacion: dict[int, float | None] = {}
-
-        for factor_margen in (0.4, 0.8, 1.5):
-            with st.spinner("Calculando la trayectoria óptima por la red vial..."):
-                north, south, east, west = calcular_bbox_corredor(
-                    lat_o, lon_o, lat_d, lon_d, factor_margen=factor_margen
-                )
-
-                grafo = cargar_grafo_calles(north, south, east, west)
-
-                nodo_origen = ox.distance.nearest_nodes(grafo, lon_o, lat_o)
-                nodo_destino = ox.distance.nearest_nodes(grafo, lon_d, lat_d)
-
-                try:
-                    ruta_actual = nx.dijkstra_path(grafo, nodo_origen, nodo_destino, weight="length")
-                except nx.NetworkXNoPath:
-                    ruta_actual = None
-
-                if ruta_actual is None:
-                    continue
-
-                for _ in range(3):
-                    sensores_cercanos = sensores_relevantes_para_ruta(sensores_disponibles, grafo, ruta_actual)
-                    obtener_ocupaciones_sensores(sensores_cercanos, intentos_previos=intentos_previos_ocupacion)
-
-                    sensores_con_dato = [
-                        s for s in sensores_disponibles
-                        if intentos_previos_ocupacion.get(s["id_sensor"]) is not None
-                    ]
-                    ocupacion_por_arista = calcular_ocupacion_por_arista(
-                        grafo, sensores_con_dato, intentos_previos_ocupacion
-                    )
-                    grafo_ponderado = construir_grafo_ponderado(grafo, ocupacion_por_arista, factor_trafico)
-
-                    nueva_ruta = nx.dijkstra_path(grafo_ponderado, nodo_origen, nodo_destino, weight="weight")
-                    if nueva_ruta == ruta_actual:
-                        break
-                    ruta_actual = nueva_ruta
-
-                ruta_nodos = ruta_actual
-                break
-
-        if ruta_nodos is not None:
-            st.session_state.ruta_nodos = ruta_nodos
-            st.session_state.grafo_ruta = grafo_ponderado
-            st.session_state.grafo_nodos_coords = {
-                n: (d["y"], d["x"]) for n, d in grafo.nodes(data=True)
-            }
-            st.session_state.coords_origen_real = (lat_o, lon_o)
-            st.session_state.coords_destino_real = (lat_d, lon_d)
-            st.session_state.pop("ruta_sin_camino", None)
+        if tramos and tramos[-1]["nombre"] == nombre:
+            tramos[-1]["longitud"] += longitud
+            if ocupacion is not None:
+                tramos[-1]["ocup_ponderada"] += ocupacion * longitud
+                tramos[-1]["longitud_con_dato"] += longitud
+            if id_sensor_edge is not None:
+                tramos[-1]["sensores"].add(id_sensor_edge)
         else:
-            st.session_state.pop("ruta_nodos", None)
-            st.session_state.ruta_sin_camino = True
-
-    # --- 5. RESULTADOS, TABLA Y MAPA FINAL ---
-    if st.session_state.get("ruta_sin_camino"):
-        st.error("No ha sido posible encontrar un trayecto accesible entre los dos puntos seleccionados.")
-
-    if "ruta_nodos" in st.session_state:
-        ruta_nodos = st.session_state.ruta_nodos
-        grafo_ruta = st.session_state.grafo_ruta
-        coords_nodos = st.session_state.grafo_nodos_coords
-        lat_o_real, lon_o_real = st.session_state.coords_origen_real
-        lat_d_real, lon_d_real = st.session_state.coords_destino_real
-
-        sensor_origen = dict_sensores[st.session_state.sel_origen]
-        sensor_destino = dict_sensores[st.session_state.sel_destino]
-
-        st.divider()
-        st.success("¡Ruta recomendada calculada con éxito!")
-
-        # --- CONSTRUCCIÓN RÁPIDA DE LA TABLA CON LOGOS SVG ---
-        tramos = []
-        distancia_total = 0.0
-        for u, v in zip(ruta_nodos[:-1], ruta_nodos[1:]):
-            datos = grafo_ruta[u][v]
-            nombre = datos.get("name") or "Calle sin nombre"
-            longitud = datos.get("length", 0.0)
-            ocupacion = datos.get("ocupacion")
-            id_sensor_edge = datos.get("id_sensor")
-            distancia_total += longitud
-
-            if tramos and tramos[-1]["nombre"] == nombre:
-                tramos[-1]["longitud"] += longitud
-                if ocupacion is not None:
-                    tramos[-1]["ocup_ponderada"] += ocupacion * longitud
-                    tramos[-1]["longitud_con_dato"] += longitud
-                if id_sensor_edge is not None:
-                    tramos[-1]["sensores"].add(id_sensor_edge)
-            else:
-                tramos.append({
-                    "nombre": nombre,
-                    "longitud": longitud,
-                    "ocup_ponderada": ocupacion * longitud if ocupacion is not None else 0.0,
-                    "longitud_con_dato": longitud if ocupacion is not None else 0.0,
-                    "sensores": {id_sensor_edge} if id_sensor_edge is not None else set(),
-                })
-
-        calle_origen = (sensor_origen.get("nombre_calle") or sensor_origen.get("nombre_norm") or "Calle sin nombre").capitalize()
-        calle_destino = (sensor_destino.get("nombre_calle") or sensor_destino.get("nombre_norm") or "Calle sin nombre").capitalize()
-
-        # Usamos marcas HTML con los SVGs incrustados para la tabla
-        datos_tabla = [{
-            "Etapa": "Origen",
-            "Calle / Vía": calle_origen,
-            "Sensor(es) Cercanos": f"#{sensor_origen['id_sensor']}",
-            "Distancia": "0 m",
-            "Saturación Prevista": "Punto de Salida",
-        }]
-
-        for idx, t in enumerate(tramos):
-            ocup_texto = f"{t['ocup_ponderada'] / t['longitud_con_dato']:.1f}%" if t["longitud_con_dato"] > 0 else "Sin datos"
-            ids_texto = ", ".join(f"#{i}" for i in sorted(t["sensores"])) if t["sensores"] else "—"
-            dist_texto = f"{round(t['longitud'])} m" if t['longitud'] < 1000 else f"{t['longitud']/1000:.2f} km"
-
-            datos_tabla.append({
-                "Etapa": f"Tramo {idx + 1}",
-                "Calle / Vía": t["nombre"],
-                "Sensor(es) Cercanos": ids_texto,
-                "Distancia": dist_texto,
-                "Saturación Prevista": ocup_texto,
+            tramos.append({
+                "nombre": nombre,
+                "longitud": longitud,
+                "ocup_ponderada": ocupacion * longitud if ocupacion is not None else 0.0,
+                "longitud_con_dato": longitud if ocupacion is not None else 0.0,
+                "sensores": {id_sensor_edge} if id_sensor_edge is not None else set(),
             })
 
+    calle_origen = (sensor_origen.get("nombre_calle") or sensor_origen.get("nombre_norm") or "Calle sin nombre").capitalize()
+    calle_destino = (sensor_destino.get("nombre_calle") or sensor_destino.get("nombre_norm") or "Calle sin nombre").capitalize()
+
+    # Métricas principales
+    m1, m2 = st.columns(2)
+    with m1:
+        st.metric("Distancia total estimada", f"{distancia_total / 1000:.2f} km")
+    with m2:
+        st.metric("Tramos principales", f"{len(tramos)} tramos")
+
+    # CONSTRUCCIÓN DE LA TABLA DE ITINERARIO
+    datos_tabla = [{
+        "Etapa": "Origen",
+        "Calle / Vía": calle_origen,
+        "Sensor(es) Cercanos": f"#{sensor_origen['id_sensor']}",
+        "Distancia": "0 m",
+    }]
+
+    for idx, t in enumerate(tramos):
+        ids_texto = ", ".join(f"#{i}" for i in sorted(t["sensores"])) if t["sensores"] else "—"
+        dist_texto = f"{round(t['longitud'])} m" if t['longitud'] < 1000 else f"{t['longitud']/1000:.2f} km"
+
         datos_tabla.append({
-            "Etapa": "Destino",
-            "Calle / Vía": calle_destino,
-            "Sensor(es) Cercanos": f"#{sensor_destino['id_sensor']}",
-            "Distancia": "Llegada",
-            "Saturación Prevista": "Punto de Llegada",
+            "Etapa": f"Tramo {idx + 1}",
+            "Calle / Vía": t["nombre"],
+            "Sensor(es) Cercanos": ids_texto,
+            "Distancia": dist_texto,
         })
 
-        st.markdown(f"### <img src='{SVG_RUTA}' align='top'/> Itinerario detallado de la ruta", unsafe_allow_html=True)
-        st.dataframe(pd.DataFrame(datos_tabla), width="stretch", hide_index=True)
-        st.caption(f"Distancia total estimada del recorrido: **{distancia_total / 1000:.2f} km**.")
+    datos_tabla.append({
+        "Etapa": "Destino",
+        "Calle / Vía": calle_destino,
+        "Sensor(es) Cercanos": f"#{sensor_destino['id_sensor']}",
+        "Distancia": "Llegada",
+    })
 
-        # --- MAPA FINAL CON DETALLES MEJORADOS ---
-        st.markdown(f"### <img src='{SVG_RUTA}' align='top'/> Vista interactiva del trayecto", unsafe_allow_html=True)
+    st.markdown("#### Itinerario detallado de la ruta")
+    st.dataframe(pd.DataFrame(datos_tabla), width="stretch", hide_index=True)
 
-        lats_ruta = [coords_nodos[n][0] for n in ruta_nodos]
-        lons_ruta = [coords_nodos[n][1] for n in ruta_nodos]
+    # Mapa Final interactivo
+    st.markdown("#### Vista en el mapa")
 
-        fig_ruta = go.Figure()
+    lats_ruta = [coords_nodos[n][0] for n in ruta_nodos]
+    lons_ruta = [coords_nodos[n][1] for n in ruta_nodos]
 
-        # Línea de ruta
-        fig_ruta.add_trace(go.Scattermapbox(
-            lat=[lat_o_real] + lats_ruta + [lat_d_real],
-            lon=[lon_o_real] + lons_ruta + [lon_d_real],
-            mode="lines",
-            line=dict(width=5, color=COLOR_RUTA),
-            name="Ruta calculada",
-            hoverinfo="skip"
-        ))
+    fig_ruta = go.Figure()
 
-        hovertemplate_fmt = (
-            "<b>%{customdata[0]}</b><br><br>"
-            "<b>ID Sensor:</b> %{customdata[1]}<br>"
-            "<b>Estado:</b> %{customdata[2]}<br>"
-            "<b>Latitud:</b> %{customdata[3]:.5f}<br>"
-            "<b>Longitud:</b> %{customdata[4]:.5f}<extra></extra>"
-        )
+    fig_ruta.add_trace(go.Scattermapbox(
+        lat=[lat_o_real] + lats_ruta + [lat_d_real],
+        lon=[lon_o_real] + lons_ruta + [lon_d_real],
+        mode="lines",
+        line=dict(width=5, color=COLOR_RUTA),
+        name="Ruta calculada",
+        hoverinfo="skip"
+    ))
 
-        # Marcador Origen
-        fig_ruta.add_trace(go.Scattermapbox(
-            lat=[lat_o_real], lon=[lon_o_real],
-            mode="markers",
-            marker=dict(size=16, color=COLOR_ORIGEN),
-            name="Origen",
-            customdata=[[calle_origen, sensor_origen["id_sensor"], ESTADO_ORIGEN, lat_o_real, lon_o_real]],
-            hovertemplate=hovertemplate_fmt
-        ))
+    hovertemplate_fmt = (
+        "<b>%{customdata[0]}</b><br><br>"
+        "<b>ID Sensor:</b> %{customdata[1]}<br>"
+        "<b>Estado:</b> %{customdata[2]}<br>"
+        "<b>Latitud:</b> %{customdata[3]:.5f}<br>"
+        "<b>Longitud:</b> %{customdata[4]:.5f}<extra></extra>"
+    )
 
-        # Marcador Destino
-        fig_ruta.add_trace(go.Scattermapbox(
-            lat=[lat_d_real], lon=[lon_d_real],
-            mode="markers",
-            marker=dict(size=16, color=COLOR_DESTINO),
-            name="Destino",
-            customdata=[[calle_destino, sensor_destino["id_sensor"], ESTADO_DESTINO, lat_d_real, lon_d_real]],
-            hovertemplate=hovertemplate_fmt
-        ))
+    fig_ruta.add_trace(go.Scattermapbox(
+        lat=[lat_o_real], lon=[lon_o_real],
+        mode="markers",
+        marker=dict(size=16, color=COLOR_ORIGEN),
+        name="Origen",
+        customdata=[[calle_origen, sensor_origen["id_sensor"], "Origen", lat_o_real, lon_o_real]],
+        hovertemplate=hovertemplate_fmt
+    ))
 
-        fig_ruta.update_layout(
-            mapbox=dict(
-                style="open-street-map",
-                zoom=13,
-                center={"lat": (lat_o_real + lat_d_real) / 2, "lon": (lon_o_real + lon_d_real) / 2},
-            ),
-            margin={"r": 0, "t": 0, "l": 0, "b": 0},
-            height=450,
-            legend=dict(bgcolor="rgba(255,255,255,0.8)"),
-        )
-        st.plotly_chart(fig_ruta, width="stretch")
+    fig_ruta.add_trace(go.Scattermapbox(
+        lat=[lat_d_real], lon=[lon_d_real],
+        mode="markers",
+        marker=dict(size=16, color=COLOR_DESTINO),
+        name="Destino",
+        customdata=[[calle_destino, sensor_destino["id_sensor"], "Destino", lat_d_real, lon_d_real]],
+        hovertemplate=hovertemplate_fmt
+    ))
+
+    fig_ruta.update_layout(
+        mapbox=dict(
+            style="open-street-map",
+            zoom=13,
+            center={"lat": (lat_o_real + lat_d_real) / 2, "lon": (lon_o_real + lon_d_real) / 2},
+        ),
+        margin={"r": 0, "t": 0, "l": 0, "b": 0},
+        height=450,
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=0.98,
+            xanchor="left",
+            x=0.02,
+            bgcolor="rgba(255, 255, 255, 0.6)",
+            font=dict(color="black")
+        ),
+    )
+    st.plotly_chart(fig_ruta, width="stretch")
