@@ -17,6 +17,16 @@ from pathlib import Path
 
 import streamlit as st
 
+# NOTA sobre por qué cambié de enfoque:
+# Intentar DETECTAR el tema activo desde Python (st.context.theme,
+# st.get_option, etc.) no es fiable: ese código de módulo solo corre una vez
+# por proceso, y en tu instalación tampoco refleja el toggle manual.
+# En vez de detectar nada, uso la variable CSS "--text-color" que Streamlit
+# SÍ actualiza en vivo en el navegador cada vez que cambiás de tema (es la
+# misma variable que ya usan el label y el "objetivo" de la tarjeta KPI, por
+# eso esos dos sí te cambiaban bien). Con color-mix() el navegador la mezcla
+# con el azul de marca y se recalcula solo, sin Python de por medio.
+# Ver kpi_card() y la clase .madflow-kpi-value en apply_theme() más abajo.
 
 TEXT = "#0A2A4A"  # valor por defecto solo para PLOTLY_LAYOUT (ver nota abajo)
 
@@ -67,11 +77,7 @@ def apply_theme():
         padding-top:1.5rem;
     }
 
-
-    /* =========================
-       SIDEBAR CORPORATIVO
-    ========================= */
-
+    /* Sidebar corporativo */
     [data-testid="stSidebar"]{
         background:linear-gradient(180deg,#0B5FA5 0%,#0A4E88 100%);
     }
@@ -80,72 +86,72 @@ def apply_theme():
         color:white;
     }
 
-
-    /* Navegación */
-    [data-testid="stSidebarNav"] a {
-        border-radius:10px;
-        margin:14px 8px !important;
-        padding:10px 10px !important;
+    /* El texto DENTRO de los propios inputs (fecha, selects) va sobre un
+       fondo claro nativo del navegador, no sobre el azul del sidebar —
+       blanco ahí sería invisible. Lo dejamos oscuro y legible. */
+    [data-testid="stSidebar"] input,
+    [data-testid="stSidebar"] [data-baseweb="select"] *,
+    [data-testid="stSidebar"] [data-baseweb="input"] *{
+        color:#0A2A4A !important;
     }
 
+    /* Página activa */
+    [data-testid="stSidebarNav"] a {
+        border-radius: 10px;
+        margin: 14px 8px !important;   /* antes 2px */
+        padding: 10px 10px !important; /* antes 6px */
+    }
 
+    /* Hover */
     [data-testid="stSidebarNav"] a:hover{
         background:rgba(255,255,255,.10);
         border-radius:10px;
     }
 
-    /* Tamaño texto menú lateral */
-    [data-testid="stSidebarNav"] span {
-        font-size: 18px !important;
-        font-weight: 600;
-    }
-
-
-    /* =========================
-    LOGO MADFLOW (st.logo)
-    ========================= */
-
-    [data-testid="stSidebarHeader"] {
-        height:200px !important;
+    /* Logo del sidebar */
+    [data-testid="stSidebarHeader"]{
+        min-height:130px !important;
         padding:0 !important;
-    }
 
-    [data-testid="stSidebarHeader"] > div {
-        width:100% !important;
         display:flex !important;
         justify-content:center !important;
         align-items:center !important;
     }
 
-    [data-testid="stSidebarHeader"] img {
-        height:180px !important;
-        width:auto !important;
-        max-width:none !important;
-        object-fit:contain !important;
+    [data-testid="stSidebarHeader"] > *{
+        width:100%;
+        display:flex !important;
+        justify-content:center !important;
+        align-items:center !important;
     }
 
+    [data-testid="stSidebarHeader"] img{
+        height:130px !important;
+        width:auto !important;
+        max-width:none !important;
+        max-height:none !important;
+        margin:0 auto !important;
+        display:block !important;
+    }
 
-    /* =========================
-       BOTÓN SIDEBAR CERRADO
-    ========================= */
-
+    /* Logo cuando el sidebar está colapsado */
     [data-testid="stSidebarCollapsedControl"]{
-        width:70px !important;
-        height:70px !important;
+        min-height:70px !important;
+        display:flex !important;
+        justify-content:center !important;
+        align-items:center !important;
         margin-top:10px !important;
     }
 
-
-    [data-testid="stSidebarCollapsedControl"] svg{
-        width:45px !important;
-        height:45px !important;
+    [data-testid="stSidebarCollapsedControl"] img{
+        height:68px !important;
+        width:auto !important;
+        max-width:none !important;
+        max-height:none !important;
+        display:block !important;
+        margin:0 auto !important;
     }
-
-
-    /* =========================
-       BOTONES
-    ========================= */
-
+    /* Botones */
     .stButton>button,
     .stDownloadButton>button{
 
@@ -156,14 +162,12 @@ def apply_theme():
         font-weight:600;
     }
 
-
     .stButton>button:hover,
     .stDownloadButton>button:hover{
 
         background:#6848a8;
         color:white;
     }
-
 
     .stButton>button:focus,
     .stButton>button:active,
@@ -174,10 +178,7 @@ def apply_theme():
         color:white;
     }
 
-
-    /* =========================
-       TABS
-    ========================= */
+    /* Tabs */
 
     button[data-baseweb="tab"]{
 
@@ -185,12 +186,10 @@ def apply_theme():
         font-weight:600;
     }
 
-
     button[data-baseweb="tab"]:hover{
 
         background:rgba(126,87,194,.15);
     }
-
 
     button[data-baseweb="tab"][aria-selected="true"]{
 
@@ -198,10 +197,7 @@ def apply_theme():
         color:white !important;
     }
 
-
-    /* =========================
-       KPI
-    ========================= */
+    /* KPI */
 
     div[data-testid="stMetric"]{
 
@@ -210,6 +206,26 @@ def apply_theme():
         padding:15px;
     }
 
+    /* Color del VALOR de la tarjeta KPI: se mezcla en vivo con --text-color,
+       así que sigue el tema claro/oscuro sin necesidad de detectarlo desde
+       Python (ver nota al inicio del archivo). */
+    .madflow-kpi-value{
+        color: color-mix(in srgb, var(--text-color) 65%, #0B5FA5 35%);
+    }
+
+    /* Tarjetas KPI (contenedores con key="kpi_...") todas con la misma
+       altura y mismo look, aunque el contenido varíe */
+    div:has(> div[class*="st-key-kpi_"]){
+        height:180px !important;
+    }
+    div[class*="st-key-kpi_"]{
+        border-radius:14px !important;
+        height:180px;
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        overflow:hidden;
+    }
 
     </style>
     """, unsafe_allow_html=True)
@@ -253,55 +269,79 @@ def header_banner(titulo: str, subtitulo: str = "") -> None:
         unsafe_allow_html=True,
     )
 
+def kpi_card(
+    label: str,
+    value: str,
+    positive: bool | None = None,
+    objetivo: str = "",
+    color: str | None = None,
+    trend: list | None = None,
+    key: str | None = None,
+) -> None:
+    """
+    Tarjeta KPI con altura fija, borde de color a la izquierda y sparkline
+    opcional.
 
-def kpi_card(label: str, value: str, positive: bool | None = None, objetivo: str = "") -> None:
+    - positive=True/False sigue pintando el VALOR en verde/rojo (para KPIs
+      de variación). Si no se pasa, el valor usa color-mix con --text-color
+      (se adapta solo a claro/oscuro, ver nota de apply_theme).
+    - color: color de acento para el borde izquierdo y la línea del
+      sparkline. Por defecto usa violeta de marca. Pasale un COLORS[...]
+      distinto por tarjeta para que la fila no se vea todas iguales.
+    - trend: lista/serie de números para dibujar una mini línea de
+      tendencia debajo del valor (p.ej. la curva horaria del KPI).
+    - key: necesario si generás varias tarjetas en un bucle, para que
+      Streamlit no colisione claves internas.
     """
-    Tarjeta KPI personalizada.
-    positive=True -> verde, False -> rojo, None -> color adaptado al tema
-    (azul oscuro en modo claro, azul claro en modo oscuro).
-    """
+    accent = color or COLORS["violeta"]
+
+    valor_style = ""
     if positive is True:
-        color = COLORS["verde"]
+        valor_style = f"color:{COLORS['verde']};"
     elif positive is False:
-        color = COLORS["rojo"]
-    else:
-      color = "color-mix(in srgb, var(--text-color) 80%, #0B5FA5)"
+        valor_style = f"color:{COLORS['rojo']};"
+    # si no hay positive, el color del valor lo pone la clase CSS
+    # .madflow-kpi-value (color-mix con --text-color, se adapta solo)
 
-    obj = f'<div style="font-size:12px;color:var(--text-color);opacity:.7;margin-top:6px;">{objetivo}</div>'
+    obj = f'<div style="font-size:12px;color:var(--text-color);opacity:.7;margin-top:4px;">{objetivo}</div>' if objetivo else ""
 
-    st.markdown(f"""
-        <div style="
-        background:var(--secondary-background-color);
-        border:1px solid #BFE3E0;
-        border-radius:14px;
-        padding:18px;
-        text-align:center;
-        ">
+    contenedor_key = key or f"kpi_{label}"
+    with st.container(border=True, key=contenedor_key):
+        st.markdown(f"""
+            <div style="border-left:4px solid {accent}; padding-left:12px;">
+                <div style="font-size:13px;font-weight:600;color:var(--text-color);opacity:.75;">
+                    {label}
+                </div>
+                <div class="madflow-kpi-value" style="font-size:28px;font-weight:700;margin-top:6px;{valor_style}">
+                    {value}
+                </div>
+                {obj}
+            </div>
+            """, unsafe_allow_html=True)
 
-        <div style="
-        font-size:14px;
-        font-weight:600;
-        color:var(--text-color);
-        opacity:.8;
-        ">
-            {label}
-        </div>
+        if trend:
+            import plotly.graph_objects as go
+            r, g, b = int(accent[1:3], 16), int(accent[3:5], 16), int(accent[5:7], 16)
+            fig = go.Figure(go.Scatter(
+                y=list(trend), mode="lines", line=dict(color=accent, width=2),
+                fill="tozeroy", fillcolor=f"rgba({r},{g},{b},0.15)",
+            ))
+            fig.update_layout(
+                height=48, margin=dict(l=0, r=0, t=6, b=0),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                xaxis=dict(visible=False), yaxis=dict(visible=False),
+                showlegend=False,
+            )
+            st.plotly_chart(
+                fig, width="stretch", config={"displayModeBar": False},
+                key=f"{contenedor_key}_spark",
+            )
+        else:
+            # Reserva el mismo hueco que ocupa un sparkline, para que las
+            # tarjetas sin trend midan igual que las que sí lo tienen.
+            st.markdown('<div style="height:48px;"></div>', unsafe_allow_html=True)
 
-        <div class="madflow-kpi-value" style="
-        font-size:30px;
-        font-weight:700;
-        margin-top:8px;
-        color:{color};
-        ">
-        {value}
-        </div>
-
-        {obj}
-
-        </div>
-        """, unsafe_allow_html=True)
-
-def sidebar_footer_logo(image_path: str, height_px: int = 200) -> None:
+def sidebar_footer_logo(image_path: str, height_px: int = 100) -> None:
     """
     Coloca una imagen (p.ej. madflow.png) al final del sidebar, centrada.
 
