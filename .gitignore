@@ -231,3 +231,5 @@ database/
 models/
 
 *.pkl
+
+run_programador_local.bat
