@@ -1,5 +1,6 @@
 import duckdb
 from pathlib import Path
+from datetime import datetime
 
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = ROOT / "database" / "trafico.duckdb"
@@ -57,9 +58,17 @@ def agregar_ultima_hora():
           AND hora = EXTRACT(HOUR FROM date_trunc('hour', now() - INTERVAL 1 HOUR))
     """).fetchone()[0]
 
-    con.close()
-    print(f"Hora agregada e insertada en fact_trafico_hora_live ({filas_insertadas} sensores)")
+    hora_agregada = con.execute("""
+        SELECT date_trunc('hour', now() - INTERVAL 1 HOUR)
+    """).fetchone()[0]
 
+    con.close()
+
+    print(
+        f"[{datetime.now()}] "
+        f"Hora agregada: {hora_agregada} | "
+        f"Insertados {filas_insertadas} sensores en fact_trafico_hora_live"
+)
 
 if __name__ == "__main__":
     agregar_ultima_hora()
