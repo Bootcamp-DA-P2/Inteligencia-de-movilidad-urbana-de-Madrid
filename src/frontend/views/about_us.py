@@ -349,4 +349,4 @@ with f3:
     render_db_dimension(dim_irene)
 
 st.divider()
-st.caption("© 2026 Inteligencia de Movilidad Urbana de Madrid. Creado con ❤️ y modelado dimensional altamente humorístico.")
+st.caption("MadFlow Analytics © 2026 • Optimizando la gestión del flujo vehicular mediante Ciencia de Datos.")
