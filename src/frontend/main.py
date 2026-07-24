@@ -13,16 +13,15 @@ LOGO_PATH = str(Path(__file__).resolve().parents[2] / "assets" / "logomadrid.png
 MADFLOW_PATH = str(Path(__file__).resolve().parents[2] / "assets" / "madflow.png")
 
 
-# --- CONFIGURACIÓN DE DESARROLLO ---
+# CONFIGURACIÓN DE DESARROLLO
 # Cambia esto a False cuando quieras que el login sea obligatorio
 DEVELOPMENT_MODE = True
-# -----------------------------------
 
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
-# 1. CONFIGURACIÓN INICIAL
+# CONFIGURACIÓN INICIAL
 st.set_page_config(
     page_title="MadFlow",
     page_icon=MADFLOW_PATH,
@@ -36,7 +35,7 @@ st.logo(MADFLOW_PATH)
 apply_theme()
 
 
-# 2. Inicializar estado de sesión
+# Inicializar estado de sesión
 if "logged_in" not in st.session_state:
     if DEVELOPMENT_MODE:
         st.session_state["logged_in"] = True
@@ -48,7 +47,7 @@ if "page" not in st.session_state:
     st.session_state["page"] = "login"
 
 
-# 3. Navegación dinámica
+# Navegación dinámica
 
 if not st.session_state["logged_in"]:
 
@@ -95,7 +94,7 @@ else:
         ),
         st.Page(
             "views/about_us.py",
-            title="El Backstage",
+            title="Backstage",
             icon=":material/groups:"
         ),
     ]

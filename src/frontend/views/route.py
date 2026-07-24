@@ -359,12 +359,26 @@ else:
     st.plotly_chart(fig_select, width="stretch")
 
 
-   # --- 1. CONFIGURACIÓN Y CONSTANTE DE TRÁFICO ---
+   # CONFIGURACIÓN Y CONSTANTE DE TRÁFICO ---
     FACTOR_TRAFICO_FIJO = 8.0
 
-    # --- 2. CÁLCULO DE LA RUTA (BOTÓN ALINEADO A LA IZQUIERDA) ---
-    st.write("")  # Espaciador
-    btn_calcular = st.button("Calcular Ruta", type="primary", use_container_width=False)
+    # CÁLCULO DE LA RUTA (BOTÓN ALINEADO A LA IZQUIERDA) ---
+    st.write("")
+
+    col_r1, col_r2, _ = st.columns([0.2, 0.2, 0.6])
+
+    with col_r1:
+        btn_calcular = st.button("Calcular Ruta", type="primary", use_container_width=False)
+
+    with col_r2:
+        if st.button("Limpiar búsqueda", type="secondary", use_container_width=False):
+            st.session_state.pop("ruta_nodos", None)
+            st.session_state.pop("grafo_ruta", None)
+            st.session_state.pop("grafo_nodos_coords", None)
+            st.session_state.pop("coords_origen_real", None)
+            st.session_state.pop("coords_destino_real", None)
+            st.session_state.pop("ruta_sin_camino", None)
+            st.rerun()
 
     if btn_calcular:
         sensor_origen = dict_sensores[st.session_state.sel_origen]

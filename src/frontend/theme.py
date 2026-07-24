@@ -125,16 +125,20 @@ def apply_theme():
         align-items:center !important;
     }
 
+    /*  LOGO /Efecto LOGO  */
     [data-testid="stSidebarHeader"] img{
         height:130px !important;
         width:auto !important;
         max-width:none !important;
         max-height:none !important;
         margin:0 auto !important;
-        display:block !important;
+        display:block !important;        
+        filter: 
+            drop-shadow(0 -0.1px 0 rgba(255, 255, 255, 0.55)) !important;
     }
 
     /* Logo cuando el sidebar está colapsado */
+
     [data-testid="stSidebarCollapsedControl"]{
         min-height:70px !important;
         display:flex !important;
@@ -149,9 +153,21 @@ def apply_theme():
         max-width:none !important;
         max-height:none !important;
         display:block !important;
-        margin:0 auto !important;
+        margin:0 auto !important;        
     }
+    
     /* Botones */
+
+    div[data-testid="stButton"] button[kind="secondary"] {
+        background-color: #6c757d !important;
+        color: white !important;
+        border-color: #6c757d !important;
+    }
+    div[data-testid="stButton"] button[kind="secondary"]:hover {
+        background-color: #5a6268 !important;
+        border-color: #545b62 !important;
+    }
+
     .stButton>button,
     .stDownloadButton>button{
 
@@ -206,18 +222,18 @@ def apply_theme():
         padding:15px;
     }
 
-    /* Color del VALOR de la tarjeta KPI: se mezcla en vivo con --text-color,
-       así que sigue el tema claro/oscuro sin necesidad de detectarlo desde
-       Python (ver nota al inicio del archivo). */
+    /* Color del VALOR de la tarjeta KPI */
+
     .madflow-kpi-value{
         color: color-mix(in srgb, var(--text-color) 65%, #0B5FA5 35%);
     }
 
-    /* Tarjetas KPI (contenedores con key="kpi_...") todas con la misma
-       altura y mismo look, aunque el contenido varíe */
+    /* Tarjetas KPI */
+
     div:has(> div[class*="st-key-kpi_"]){
         height:180px !important;
     }
+
     div[class*="st-key-kpi_"]{
         border-radius:14px !important;
         height:180px;
@@ -227,11 +243,92 @@ def apply_theme():
         overflow:hidden;
     }
 
-    /* --- Efecto LOGO --- */
-    [data-testid="stSidebarHeader"] img {
-        filter: 
-            drop-shadow(0 -0.1px 0 rgba(255, 255, 255, 0.55)) !important;
+    /*Banner all views.*/
+    .st-emotion-cache-6c7yup{
+        margin-top: 0.1rem;
     }
+
+    /* ABOUT_US*/
+
+    .db-table {
+        background-color: #ffffff;
+        border: 1.5px solid #bdc3c7;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        position: relative;
+        height: 100%;
+    }
+
+    .db-header {
+        background: linear-gradient(135deg, #f0f2f5 0%, #e4e7eb 100%);
+        padding: 7px 10px;
+        font-weight: 700;
+        font-size: 11px;
+        color: #2c3e50;
+        border-bottom: 1.5px solid #bdc3c7;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .db-title-wrapper {
+        display: flex;
+        align-items: center;
+    }
+
+    .db-body {
+        padding: 8px 10px;
+        font-size: 11px;
+        color: #333;
+    }
+
+    .db-field {
+        display: flex;
+        align-items: center;
+        margin-bottom: 4px;
+        line-height: 1.2;
+    }
+
+    .db-type {
+        color: #8B263E;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 10px;
+        font-weight: bold;
+        margin-left: 4px;
+    }
+
+    .profile-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid #d0d0d0;
+        margin-right: 8px;
+        flex-shrink: 0;
+    }
+
+    /* Tabla de Hechos Central */
+
+    .fact-table {
+        background-color: #ffffff;
+        border: 2px solid #8B263E;
+        border-radius: 10px;
+        box-shadow: 0 8px 20px rgba(139,38,62,0.15);
+    }
+
+    .fact-header {
+        background: linear-gradient(135deg, #8B263E 0%, #5C182A 100%);
+        color: white;
+        padding: 8px;
+        font-weight: bold;
+        text-align: center;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    /* ... */
 
     </style>
     """, unsafe_allow_html=True)

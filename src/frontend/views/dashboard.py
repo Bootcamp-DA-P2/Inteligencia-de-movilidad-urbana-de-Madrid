@@ -30,12 +30,25 @@ def col_ocupacion(df: pd.DataFrame) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Filtros globales (en el sidebar, imitando el panel de slicers del mockup)
+# Filtros globales (en el sidebar)
 # ---------------------------------------------------------------------------
+FECHA_MINIMA = pd.Timestamp("2025-07-01").date()
+
 with st.sidebar.container(border=True, key="filtros"):
     st.markdown("### :material/filter_alt: Filtros")
-    fecha_desde = st.date_input("Desde", value=pd.Timestamp("2025-07-01"))
-    fecha_hasta = st.date_input("Hasta", value=pd.Timestamp("2026-06-30"))
+    
+    fecha_desde = st.date_input(
+        "Desde", 
+        value=FECHA_MINIMA,
+        min_value=FECHA_MINIMA  # Deshabilita cualquier fecha anterior al 01/07/2025
+    )
+    
+    fecha_hasta = st.date_input(
+        "Hasta", 
+        value=pd.Timestamp("2026-06-30").date(),
+        min_value=fecha_desde   
+    )
+
 desde_str, hasta_str = fecha_desde.isoformat(), fecha_hasta.isoformat()
 
 # ---------------------------------------------------------------------------

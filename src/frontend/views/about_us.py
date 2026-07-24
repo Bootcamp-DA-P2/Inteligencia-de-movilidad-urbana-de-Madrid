@@ -5,13 +5,13 @@ from theme import apply_theme, header_banner
 
 # Aplica el tema global y el header
 apply_theme()
-header_banner("MadFlow: El Backstage", "El Modelo Dimensional de nuestro Equipo")
+header_banner("MadFlow: Backstage", "El Modelo Dimensional de nuestro Equipo")
 
 # -------------------------------------------------------------------
 # PRESENTACIÓN
 # -------------------------------------------------------------------
 
-st.subheader("☕ La verdadera energía detrás del código")
+st.subheader("La verdadera energía detrás del código")
 
 st.write(
     "Detrás de cada predicción de tráfico de MadFlow no solo hay sensores, "
@@ -22,12 +22,12 @@ st.write(
 
 st.write(
     "Lo divertido de construir MadFlow no ha sido solo enfrentarnos a "
-    "cerca de un millón de datos, sino darnos cuenta de que cada uno "
+    "millones de datos, sino darnos cuenta de que cada uno "
     "aportaba una 'superpotencia' totalmente distinta al grupo."
 )
 
 st.write(
-    "### 🚗 Del caos de los datos al engranaje perfecto\n\n"
+    "### Del caos de los datos al engranaje perfecto\n\n"
     "Al principio, procesar la movilidad urbana de Madrid se sentía como intentar cruzar la "
     "Glorieta de Atocha a las 8:00 AM en patinete eléctrico. Teníamos gigabytes de registros de "
     "intensidad, ocupación y carga que amenazaban con colapsar nuestras CPUs, junto con errores "
@@ -75,16 +75,16 @@ def resolve_img_src(relative_path: str) -> str:
             mime = "jpeg" if ext in ["jpg", "jpeg"] else ext
             return f"data:image/{mime};base64,{data}"
         else:
-            print(f"⚠️ Imagen no encontrada en: {full_path}")
+            print(f"Imagen no encontrada en: {full_path}")
     except Exception as e:
-        print(f"❌ Error cargando {relative_path}: {e}")
+        print(f"Error cargando {relative_path}: {e}")
 
     return ""
 
 logo_madflow = resolve_img_src("assets/madflow.png")
 
 # -------------------------------------------------------------------
-# ICONOS SVG ELEGANTES (ISOLOGOS)
+# ICONOS SVG
 # -------------------------------------------------------------------
 
 # Icono para tablas de dimensión (Grid / Layout)
@@ -148,98 +148,13 @@ dim_daniel = {
 dim_irene = {
     "table_name": "Dimension_Irene",
     "fk": "idIrene: INT (FK)",
-    "name": "Dimension_Irene",
+    "name": "Irene Condado",
     "role": "Software Dev & BI Developer",
     "hobby": "¡Invocamos la magia de Reena y Gaudi para aniquilar el overfitting y elevar el Accuracy al infinito! ¡¡MATADRAGONES DE MÉTRICAS!!",
     "url": "https://www.linkedin.com/in/irene-condado/",
     "img": resolve_img_src("assets/equipo/irene-condado.jpg")
 }
 
-# -------------------------------------------------------------------
-# CSS LIMPIO Y ELEGANTE
-# -------------------------------------------------------------------
-
-st.markdown("""
-<style>
-.db-table {
-    background-color: #ffffff;
-    border: 1.5px solid #bdc3c7;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    position: relative;
-    height: 100%;
-}
-
-.db-header {
-    background: linear-gradient(135deg, #f0f2f5 0%, #e4e7eb 100%);
-    padding: 7px 10px;
-    font-weight: 700;
-    font-size: 11px;
-    color: #2c3e50;
-    border-bottom: 1.5px solid #bdc3c7;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.db-title-wrapper {
-    display: flex;
-    align-items: center;
-}
-
-.db-body {
-    padding: 8px 10px;
-    font-size: 11px;
-    color: #333;
-}
-
-.db-field {
-    display: flex;
-    align-items: center;
-    margin-bottom: 4px;
-    line-height: 1.2;
-}
-
-.db-type {
-    color: #8B263E;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 10px;
-    font-weight: bold;
-    margin-left: 4px;
-}
-
-.profile-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 1px solid #d0d0d0;
-    margin-right: 8px;
-    flex-shrink: 0;
-}
-
-/* Tabla de Hechos Central */
-.fact-table {
-    background-color: #ffffff;
-    border: 2px solid #8B263E;
-    border-radius: 10px;
-    box-shadow: 0 8px 20px rgba(139,38,62,0.15);
-}
-
-.fact-header {
-    background: linear-gradient(135deg, #8B263E 0%, #5C182A 100%);
-    color: white;
-    padding: 8px;
-    font-weight: bold;
-    text-align: center;
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-</style>
-""", unsafe_allow_html=True)
 
 def render_db_dimension(data):
     """Genera la estructura HTML de cada dimensión con iconos vectoriales."""
@@ -266,7 +181,7 @@ def render_db_dimension(data):
                 </div>
             </div>
             <div class="db-field">
-                <div style="font-size: 10px; color: #444; background: #f8f9fa; padding: 5px; border-radius: 4px; margin-top: 4px; border-left: 2.5px solid #8B263E;">
+                <div style="font-size: 11px; color: #444; background: #f8f9fa; padding: 5px; border-radius: 4px; margin-top: 4px; border-left: 2.5px solid #8B263E;">
                     "{data["hobby"]}"
                 </div>
             </div>
@@ -276,7 +191,7 @@ def render_db_dimension(data):
     st.markdown(html, unsafe_allow_html=True)
 
 # -------------------------------------------------------------------
-# DISPOSICIÓN DEL MODELO EN ESTRELLA LIMPIO
+# DISPOSICIÓN DEL MODELO EN ESTRELLA
 # -------------------------------------------------------------------
 
 # Fila 1: Dimensiones superiores
