@@ -3,6 +3,7 @@ from pathlib import Path
 import streamlit as st
 from theme import apply_theme, header_banner
 
+# Aplica el tema global y el header
 apply_theme()
 header_banner("MadFlow: El Backstage", "El Modelo Dimensional de nuestro Equipo")
 
@@ -42,43 +43,66 @@ st.write(
 st.divider()
 
 # -------------------------------------------------------------------
-# ICONOS SVG ELEGANTES (Vectoriales)
+# BÚSQUEDA AUTOMÁTICA DE ASSETS Y PROCESAMIENTO DE IMÁGENES
 # -------------------------------------------------------------------
 
-SVG_ICONS = {
-    "key": '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8B263E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-1.5 1.5L14 9.5M10.5 13a5 5 0 1 1 7-7l-1.5 1.5M7.5 16l-3 3v2h2l2-2h2l1.5-1.5"/></svg>',
-    "zap": '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
-    "link": '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
-    "chart": '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
-    "coffee": '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7C2D12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>',
-    "heart": '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
-    "table": '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>'
-}
-# -------------------------------------------------------------------
-# PROCESAMIENTO DE IMÁGENES
-# -------------------------------------------------------------------
+def find_assets_dir() -> Path:
+    """Busca la carpeta 'assets' subiendo desde el archivo actual hasta la raíz."""
+    current = Path(__file__).resolve().parent
+    for _ in range(5):
+        candidate = current / "assets"
+        if candidate.is_dir():
+            return candidate
+        current = current.parent
+    return Path(__file__).resolve().parent
 
-def resolve_img_src(img_path: str) -> str:
-    """Convierte imágenes a base64 para inyectarlas en HTML/CSS."""
-    if not img_path:
+ASSETS_DIR = find_assets_dir()
+
+def resolve_img_src(relative_path: str) -> str:
+    """Convierte imágenes a base64 localizándolas automáticamente en assets/."""
+    if not relative_path:
         return ""
-    if img_path.startswith("http://") or img_path.startswith("https://"):
-        return img_path
+    if relative_path.startswith("http://") or relative_path.startswith("https://"):
+        return relative_path
+
     try:
-        path = Path(img_path)
-        if path.is_file():
-            data = base64.b64encode(path.read_bytes()).decode()
-            ext = path.suffix.lstrip(".").lower()
+        clean_path = relative_path.replace("assets/", "")
+        full_path = ASSETS_DIR / clean_path
+
+        if full_path.is_file():
+            data = base64.b64encode(full_path.read_bytes()).decode()
+            ext = full_path.suffix.lstrip(".").lower()
             mime = "jpeg" if ext in ["jpg", "jpeg"] else ext
             return f"data:image/{mime};base64,{data}"
-    except Exception:
-        pass
+        else:
+            print(f"⚠️ Imagen no encontrada en: {full_path}")
+    except Exception as e:
+        print(f"❌ Error cargando {relative_path}: {e}")
+
     return ""
 
 logo_madflow = resolve_img_src("assets/madflow.png")
 
 # -------------------------------------------------------------------
-# DATOS GRACIOSOS DE LAS DIMENSIONES
+# ICONOS SVG ELEGANTES (ISOLOGOS)
+# -------------------------------------------------------------------
+
+# Icono para tablas de dimensión (Grid / Layout)
+SVG_DIM_TABLE = """<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>"""
+
+# Icono para tabla de hechos (Rayo / Spark)
+SVG_FACT_TABLE = """<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>"""
+
+# Icono para Claves Foráneas (Link / Cadena)
+SVG_FK = """<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8B263E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px; flex-shrink:0;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>"""
+
+# Iconos para Métricas
+SVG_METRIC_CODE = """<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px; flex-shrink:0;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>"""
+SVG_METRIC_COFFEE = """<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px; flex-shrink:0;"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>"""
+SVG_METRIC_HEART = """<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8B263E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px; flex-shrink:0;"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>"""
+
+# -------------------------------------------------------------------
+# DATOS DE LAS DIMENSIONES DEL EQUIPO
 # -------------------------------------------------------------------
 
 dim_elena = {
@@ -88,8 +112,7 @@ dim_elena = {
     "role": "Software Dev & Data Analyst",
     "hobby": "¡MadFlow, yo te elijo! Entrena modelos de Machine Learning y captura excepciones como si fueran Pokémon legendarios.",
     "url": "https://www.linkedin.com/in/elena-suarez-dev/",
-    "img": resolve_img_src("assets/equipo/elena-suarez-dev.png"),
-    "conector_pos": "bottom" # Conecta hacia abajo
+    "img": resolve_img_src("assets/equipo/elena-suarez-dev.png")
 }
 
 dim_ana = {
@@ -99,8 +122,7 @@ dim_ana = {
     "role": "Data Analyst & ML Specialist",
     "hobby": "Fan absoluta de Shin-chan. Si hay un bug a las 3 AM, ella lo extermina.",
     "url": "https://www.linkedin.com/in/ana-paula-montiel-923386378/",
-    "img": resolve_img_src("assets/equipo/ana-paula-montiel-923386378.png"),
-    "conector_pos": "bottom"
+    "img": resolve_img_src("assets/equipo/ana-paula-montiel-923386378.png")
 }
 
 dim_jose = {
@@ -110,8 +132,7 @@ dim_jose = {
     "role": "Data Analyst & ML Engine",
     "hobby": "El mismísimo Goku del equipo: junta toda la energía del universo para lanzar un Kamehameha a las bases de datos y transformar los CSVs en Super Saiyan.",
     "url": "https://www.linkedin.com/in/jose-carlos-de-santiago-sanchez-12b855408/",
-    "img": resolve_img_src("assets/equipo/jose-carlos-de-santiago-sanchez-12b855408.PNG"),
-    "conector_pos": "bottom"
+    "img": resolve_img_src("assets/equipo/jose-carlos-de-santiago-sanchez-12b855408.PNG")
 }
 
 dim_daniel = {
@@ -121,47 +142,49 @@ dim_daniel = {
     "role": "Full-Stack Dev & AI",
     "hobby": "«La mente de un desarrollador es un enigma...» Vive en una piña debajo del código al más puro estilo Patricia Estrella.",
     "url": "https://www.linkedin.com/in/daniel-luque-gallardo/",
-    "img": resolve_img_src("assets/equipo/daniel-luque-gallardo.jpg"),
-    "conector_pos": "right" # Conecta a la derecha
+    "img": resolve_img_src("assets/equipo/daniel-luque-gallardo.jpg")
 }
 
 dim_irene = {
     "table_name": "Dimension_Irene",
     "fk": "idIrene: INT (FK)",
-    "name": "Irene Condado",
+    "name": "Dimension_Irene",
     "role": "Software Dev & BI Developer",
     "hobby": "¡Invocamos la magia de Reena y Gaudi para aniquilar el overfitting y elevar el Accuracy al infinito! ¡¡MATADRAGONES DE MÉTRICAS!!",
     "url": "https://www.linkedin.com/in/irene-condado/",
-    "img": resolve_img_src("assets/equipo/irene-condado.jpg"),
-    "conector_pos": "left" # Conecta a la izquierda
+    "img": resolve_img_src("assets/equipo/irene-condado.jpg")
 }
 
 # -------------------------------------------------------------------
-# CSS CON CONECTORES DE BASE DE DATOS (LÍNEAS DE UNIÓN)
+# CSS LIMPIO Y ELEGANTE
 # -------------------------------------------------------------------
 
 st.markdown("""
 <style>
-/* Estilo tabla de dimensión */
 .db-table {
     background-color: #ffffff;
-    border: 2px solid #a0a0a0;
-    border-radius: 6px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    border: 1.5px solid #bdc3c7;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin-bottom: 25px;
     position: relative;
+    height: 100%;
 }
 
 .db-header {
-    background: linear-gradient(135deg, #e0e0e0 0%, #cccccc 100%);
-    padding: 6px 10px;
+    background: linear-gradient(135deg, #f0f2f5 0%, #e4e7eb 100%);
+    padding: 7px 10px;
     font-weight: 700;
-    font-size: 12px;
-    color: #222;
-    border-bottom: 2px solid #a0a0a0;
+    font-size: 11px;
+    color: #2c3e50;
+    border-bottom: 1.5px solid #bdc3c7;
     display: flex;
     justify-content: space-between;
+    align-items: center;
+}
+
+.db-title-wrapper {
+    display: flex;
     align-items: center;
 }
 
@@ -178,73 +201,30 @@ st.markdown("""
     line-height: 1.2;
 }
 
-.db-icon {
-    margin-right: 5px;
-    font-size: 10px;
-}
-
 .db-type {
-    color: #d63384;
+    color: #8B263E;
     font-family: 'Courier New', Courier, monospace;
     font-size: 10px;
     font-weight: bold;
     margin-left: 4px;
 }
 
-/* LÍNEAS DE CONEXIÓN (Líneas de relación 1:N estilo diagrama ER) */
-.connector-bottom::after {
-    content: '';
-    position: absolute;
-    bottom: -22px;
-    left: 50%;
-    width: 2px;
-    height: 20px;
-    background-color: #8B263E;
-    border-left: 1px dashed #8B263E;
-    z-index: 10;
-}
-
-.connector-bottom::before {
-    content: '◆';
-    position: absolute;
-    bottom: -27px;
-    left: calc(50% - 4px);
-    color: #8B263E;
-    font-size: 8px;
-    z-index: 11;
-}
-
-.connector-right::after {
-    content: '';
-    position: absolute;
-    right: -22px;
-    top: 50%;
-    width: 20px;
-    height: 2px;
-    background-color: #8B263E;
-    border-top: 1px dashed #8B263E;
-    z-index: 10;
-}
-
-.connector-left::after {
-    content: '';
-    position: absolute;
-    left: -22px;
-    top: 50%;
-    width: 20px;
-    height: 2px;
-    background-color: #8B263E;
-    border-top: 1px dashed #8B263E;
-    z-index: 10;
+.profile-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #d0d0d0;
+    margin-right: 8px;
+    flex-shrink: 0;
 }
 
 /* Tabla de Hechos Central */
 .fact-table {
-    background-color: #fffafb;
+    background-color: #ffffff;
     border: 2px solid #8B263E;
-    border-radius: 8px;
-    box-shadow: 0 6px 16px rgba(139,38,62,0.2);
-    position: relative;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(139,38,62,0.15);
 }
 
 .fact-header {
@@ -253,35 +233,29 @@ st.markdown("""
     padding: 8px;
     font-weight: bold;
     text-align: center;
-    font-size: 13px;
-    letter-spacing: 0.5px;
-}
-
-.profile-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 1px solid #ccc;
-    margin-right: 8px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 </style>
 """, unsafe_allow_html=True)
 
 def render_db_dimension(data):
-    """Genera el HTML de la tabla con conectores y tipos de datos divertidos."""
+    """Genera la estructura HTML de cada dimensión con iconos vectoriales."""
     name_link = (
         f'<a href="{data["url"]}" target="_blank" style="color:#111; text-decoration:none; font-weight:bold;">{data["name"]}</a>'
         if data["url"] else data["name"]
     )
-    
-    connector_class = f"connector-{data['conector_pos']}" if 'conector_pos' in data else ""
-    
+
     html = f"""
-    <div class="db-table {connector_class}">
+    <div class="db-table">
         <div class="db-header">
-            <span>📊 {data["table_name"]}</span>
-            <span style="font-size:9px; color:#666;">DIM_TABLE</span>
+            <div class="db-title-wrapper">
+                {SVG_DIM_TABLE}
+                <span>{data["table_name"]}</span>
+            </div>
+            <span style="font-size:8px; color:#7f8c8d; letter-spacing:0.5px;">DIM_TABLE</span>
         </div>
         <div class="db-body">
             <div style="display: flex; align-items: center; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #f0f0f0;">
@@ -292,20 +266,20 @@ def render_db_dimension(data):
                 </div>
             </div>
             <div class="db-field">
-            <div style="font-size: 10px; color: #444; background: #f8f9fa; padding: 5px; border-radius: 4px; margin-top: 4px; border-left: 2.5px solid #8B263E;">
-                "{data["hobby"]}"
+                <div style="font-size: 10px; color: #444; background: #f8f9fa; padding: 5px; border-radius: 4px; margin-top: 4px; border-left: 2.5px solid #8B263E;">
+                    "{data["hobby"]}"
+                </div>
             </div>
         </div>
     </div>
     """
     st.markdown(html, unsafe_allow_html=True)
 
-
 # -------------------------------------------------------------------
-# MODELADO EN ESTRELLA CON LÍNEAS DE RELACIÓN
+# DISPOSICIÓN DEL MODELO EN ESTRELLA LIMPIO
 # -------------------------------------------------------------------
 
-# FILA 1: Dimensiones Superiores (Apuntan hacia abajo a la Fact Table)
+# Fila 1: Dimensiones superiores
 c1, c2, c3 = st.columns(3)
 with c1:
     render_db_dimension(dim_elena)
@@ -314,31 +288,32 @@ with c2:
 with c3:
     render_db_dimension(dim_jose)
 
-# FILA 2: Dimensiones Laterales + Tabla de Hechos Central
+st.write("")
+
+# Fila 2: Dimensiones laterales + Tabla de hechos central
 f1, f2, f3 = st.columns([1, 1.2, 1], vertical_alignment="center")
 
 with f1:
     render_db_dimension(dim_daniel)
 
 with f2:
-    # TABLA DE HECHOS CENTRADA
     fact_html = f"""
     <div class="db-table fact-table">
         <div class="fact-header">
-            ⚡ Fact_MadFlow_Project
+            {SVG_FACT_TABLE} Fact_MadFlow_Project
         </div>
         <div class="db-body" style="text-align: center;">
-            <img src="{logo_madflow}" style="max-width: 150px; margin: 8px 0;">
-            <div style="text-align: left; background: white; padding: 6px 8px; border-radius: 4px; border: 1px solid #e0e0e0; font-size: 10px;">
-                <div class="db-field"><span class="db-icon">🔗</span> <b>{dim_elena["fk"]}</b></div>
-                <div class="db-field"><span class="db-icon">🔗</span> <b>{dim_ana["fk"]}</b></div>
-                <div class="db-field"><span class="db-icon">🔗</span> <b>{dim_jose["fk"]}</b></div>
-                <div class="db-field"><span class="db-icon">🔗</span> <b>{dim_daniel["fk"]}</b></div>
-                <div class="db-field"><span class="db-icon">🔗</span> <b>{dim_irene["fk"]}</b></div>
-                <hr style="margin: 3px 0; border:0; border-top: 1px dashed #ccc;">
-                <div class="db-field"><span class="db-icon">📈</span> <b>Total_Lineas_Codigo</b>: <span class="db-type">BIGINT_INFINITO</span></div>
-                <div class="db-field"><span class="db-icon">☕</span> <b>Cafes_Consumidos</b>: <span class="db-type">DOUBLE_PRECISION</span></div>
-                <div class="db-field"><span class="db-icon">❤️</span> <b>Buen_Ambiente</b>: <span class="db-type">ALWAYS_TRUE</span></div>
+            <img src="{logo_madflow}" style="max-width: 110px; width: 100%; margin: 6px 0;">
+            <div style="text-align: left; background: #fafafa; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 10px;">
+                <div class="db-field">{SVG_FK} <b>{dim_elena["fk"]}</b></div>
+                <div class="db-field">{SVG_FK} <b>{dim_ana["fk"]}</b></div>
+                <div class="db-field">{SVG_FK} <b>{dim_jose["fk"]}</b></div>
+                <div class="db-field">{SVG_FK} <b>{dim_daniel["fk"]}</b></div>
+                <div class="db-field">{SVG_FK} <b>{dim_irene["fk"]}</b></div>
+                <hr style="margin: 4px 0; border:0; border-top: 1px dashed #cbd5e1;">
+                <div class="db-field">{SVG_METRIC_CODE} <b>Total_Lineas_Codigo</b>: <span class="db-type">BIGINT</span></div>
+                <div class="db-field">{SVG_METRIC_COFFEE} <b>Cafes_Consumidos</b>: <span class="db-type">DOUBLE</span></div>
+                <div class="db-field">{SVG_METRIC_HEART} <b>Buen_Ambiente</b>: <span class="db-type">BOOLEAN</span></div>
             </div>
         </div>
     </div>
