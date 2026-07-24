@@ -111,7 +111,7 @@ def apply_theme():
     /* Logo del sidebar */
     [data-testid="stSidebarHeader"]{
         min-height:130px !important;
-        padding:0 !important;
+        padding: 0 !important;
 
         display:flex !important;
         justify-content:center !important;
@@ -225,6 +225,12 @@ def apply_theme():
         flex-direction:column;
         justify-content:center;
         overflow:hidden;
+    }
+
+    /* --- Efecto LOGO --- */
+    [data-testid="stSidebarHeader"] img {
+        filter: 
+            drop-shadow(0 -0.1px 0 rgba(255, 255, 255, 0.55)) !important;
     }
 
     </style>
