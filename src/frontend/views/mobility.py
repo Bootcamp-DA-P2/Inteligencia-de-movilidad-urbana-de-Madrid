@@ -5,12 +5,18 @@ import plotly.express as px
 from services.traffic_service import get_prediction, get_sensores_distrito, get_predictions_batch
 import datetime
 import time
+from pathlib import Path
+from streamlit_lottie import st_lottie
+import json
 
 from theme import apply_theme, header_banner
 
+# CONFIGURACIÓN Y ESTILOS
+# Aplicamos el tema global personalizado y lanzamos el header principal
 apply_theme()
 header_banner("MadFlow: Movilidad en Tiempo Real", "Mapa de tráfico de Madrid")
 
+# TARJETA INTRODUCTORIA
 with st.container(border=True):
     st.markdown("### Planifica tus desplazamientos")
     st.markdown("""
@@ -19,6 +25,7 @@ Consulta la ocupación prevista del tráfico en Madrid en tiempo real o para una
 MadFlow analiza datos históricos y recientes para recomendar las mejores alternativas cercanas y ayudarte a evitar zonas con mayor congestión.
 """)
 
+# Diccionario hardcodeado de distritos de Madrid
 DISTRITOS = {
     1: "Centro", 2: "Arganzuela", 3: "Retiro", 4: "Salamanca", 5: "Chamartín",
     6: "Tetuán", 7: "Chamberí", 8: "Fuencarral-El Pardo", 9: "Moncloa-Aravaca",
@@ -37,8 +44,48 @@ def distancia_metros(lat1, lon1, lat2, lon2) -> float:
     a = math.sin(d_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
     return 2 * R * math.asin(math.sqrt(a))
 
+# BÚSQUEDA AUTOMÁTICA DE ASSETS
+def find_assets_dir() -> Path:
+    """Busca la carpeta 'assets' subiendo desde el archivo actual hasta la raíz."""
+    current = Path(__file__).resolve().parent
 
-# --- 1. SELECCIÓN DE TIPO Y FECHA DE PREDICCIÓN (ARRIBA) ---
+    for _ in range(5):
+        candidate = current / "assets"
+        if candidate.is_dir():
+            return candidate
+        current = current.parent
+
+    return Path(__file__).resolve().parent
+
+
+ASSETS_DIR = find_assets_dir()
+
+def cargar_lottie(relative_path: str):
+    """
+    Carga automáticamente una animación Lottie desde assets/.
+    """
+
+    try:
+        clean_path = relative_path.replace("assets/", "")
+        full_path = ASSETS_DIR / clean_path
+
+        if full_path.is_file():
+            with open(full_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        else:
+            print(f"Animación no encontrada en: {full_path}")
+
+    except Exception as e:
+        print(f"Error cargando {relative_path}: {e}")
+
+    return None
+
+# Cargamos dos animaciones distintas: una para la búsqueda y otra para alternativas
+lottie_gps1 = cargar_lottie("assets/localizacion.json")
+lottie_gps2 = cargar_lottie("assets/pulse.json")
+
+
+# SELECCIÓN DE TIPO Y FECHA DE PREDICCIÓN
 st.subheader("Tipo de predicción")
 
 modo_prediccion = st.radio(
@@ -66,7 +113,7 @@ else:
         "Selecciona una fecha y hora concreta para consultar la predicción."
     )
     
-    # --- MOVIDO AQUÍ: Selección de fecha y hora ---
+    # Selector dinamico de fecha y hora
     col_f1, col_f2 = st.columns(2)
 
     with col_f1:
@@ -76,6 +123,7 @@ else:
             min_value=datetime.date.today(),
         )
 
+    # Lógica para no dejar seleccionar horas del pasado si elegimos el día de hoy
     with col_f2:
         if fecha_elegida == datetime.date.today():
             hora_inicio = datetime.datetime.now().hour + 1
@@ -94,7 +142,7 @@ else:
 
 st.divider()
 
-# --- 2. SELECCIÓN DE UBICACIÓN Y MAPA ---
+# SELECCIÓN DE UBICACIÓN Y MAPA INTERACTIVO
 st.subheader("Selecciona una ubicación")
 
 id_distrito = st.selectbox(
@@ -103,6 +151,7 @@ id_distrito = st.selectbox(
     format_func=lambda x: f"{x} - {DISTRITOS[x]}",
 )
 
+# Control manual del estado: si cambia el distrito, borramos las selecciones anteriores
 if "distrito_anterior" not in st.session_state:
     st.session_state.distrito_anterior = id_distrito
 
@@ -119,6 +168,7 @@ if "seleccion_activa" not in st.session_state:
     st.session_state.seleccion_activa = False
 
 if id_distrito:
+    # Pedimos los sensores del distrito seleccionado al backend
     response_sensores = get_sensores_distrito(id_distrito)
 
     if response_sensores.status_code != 200:
@@ -133,11 +183,13 @@ if id_distrito:
                 f"{len(sensores)} ubicaciones monitorizadas en {DISTRITOS[id_distrito]}."
             )
 
+            # Preparamos el DataFrame limpiando coordenadas nulas
             df = pd.DataFrame(sensores)
             df["latitud"] = pd.to_numeric(df["latitud"], errors="coerce")
             df["longitud"] = pd.to_numeric(df["longitud"], errors="coerce")
             df = df.dropna(subset=["latitud", "longitud"])
 
+            # Fallback para los nombres de los hover del mapa
             df["nombre_hover"] = df["nombre_calle"].fillna(df["nombre_norm"]).fillna("Sin nombre")
 
             st.session_state.sensores_distrito = sensores
@@ -152,9 +204,11 @@ if id_distrito:
             }
             ids_disponibles = list(opciones_sensor.keys())
 
+            # Asignamos el primer sensor si no hay ninguno seleccionado en sesión
             if "selectbox_sensor" not in st.session_state:
                 st.session_state.selectbox_sensor = ids_disponibles[0]
 
+            # Para sincronizar cuando el usuario hace CLICK en un punto del mapa
             if "click_pendiente" in st.session_state:
                 st.session_state.selectbox_sensor = st.session_state.pop("click_pendiente")
                 st.session_state.seleccion_activa = True
@@ -165,6 +219,7 @@ if id_distrito:
             def cambiar_desde_lista():
                 st.session_state.seleccion_activa = True
 
+            # Dropdown sync con el mapa
             id_sensor_seleccionado = st.selectbox(
                 "Ubicación seleccionada",
                 options=ids_disponibles,
@@ -173,6 +228,7 @@ if id_distrito:
                 on_change=cambiar_desde_lista,
             )
 
+            # Colores y tamaños según si el punto está seleccionado o no
             df["seleccionado"] = df["id_sensor"] == id_sensor_seleccionado
 
             if st.session_state.get("seleccion_activa"):
@@ -182,6 +238,7 @@ if id_distrito:
 
             df["tamano"] = df["seleccionado"].map({True: 22, False: 8})
 
+            # Cálculo de centrado y zoom dinámico para que el mapa se ajuste solo
             lat_min, lat_max = df["latitud"].min(), df["latitud"].max()
             lon_min, lon_max = df["longitud"].min(), df["longitud"].max()
 
@@ -192,6 +249,7 @@ if id_distrito:
             span_lat = (lat_max - lat_min) * margen
             span_lon = (lon_max - lon_min) * margen
             span = max(span_lat, span_lon, 0.005)
+            # Exponente para que el zoom no quede muy lejano ni muy cerca
             zoom_calculado = 12 - (span ** 0.4) * 8
             zoom_auto = float(max(13.0, min(zoom_calculado, 15.0)))
 
@@ -199,6 +257,7 @@ if id_distrito:
                 "Selecciona una ubicación haciendo clic en el mapa o desde la lista."
             )
 
+            # Render de Plotly Scatter Map con detección de eventos
             fig = px.scatter_map(
                 df,
                 lat="latitud",
@@ -233,6 +292,7 @@ if id_distrito:
                 )
             )
 
+            # Interceptamos el click en el grafico (hace re-run de Streamlit)
             evento = st.plotly_chart(
                 fig,
                 width="stretch",
@@ -241,6 +301,7 @@ if id_distrito:
                 key="mapa_sensores",
             )
 
+            # Si el usuario hizo click en un punto del mapa, disparamos la actualización del selectbox
             puntos = evento["selection"]["points"] if evento and "selection" in evento else []
             if puntos:
                 nuevo_id = int(puntos[0]["customdata"][0])
@@ -251,45 +312,68 @@ if id_distrito:
 
 st.divider()
 
-# RESULTADOS DE LA PREDICCIÓN
+# RESULTADOS DE LA PREDICCIÓN DE MOVILIDAD
 st.subheader("Predicción de movilidad")
 
 ETIQUETAS = {"bajo": "🟢 Tráfico bajo", "medio": "🟡 Tráfico medio", "alto": "🔴 Tráfico alto"}
 
 if id_sensor_seleccionado:
-    # Inicializar variables de estado
+    # Estado local para mostrar u ocultar los resultados
     if "mostrar_principal" not in st.session_state:
         st.session_state.mostrar_principal = False
 
-    # Creamos dos columnas para poner los botones juntos
-    col_btn1, col_btn2, _ = st.columns([0.2, 0.2, 0.6])
+    # Botones de acción en columnas estrechas
+    col_btn1,col_espacio,  col_btn2 = st.columns([2,5,2])
 
     with col_btn1:
-        if st.button("Generar predicción", type="primary", width="content"):
+        if st.button("Generar predicción", type="primary", use_container_width=True):
             st.session_state.mostrar_principal = True
 
     with col_btn2:
-        if st.button("Limpiar búsqueda", type="secondary", width="content"):
+        if st.button("Limpiar búsqueda", type="secondary", use_container_width=True):
             st.session_state.mostrar_principal = False
             st.session_state.pop("click_pendiente", None)
             st.session_state.pop("mapa_sensores", None)
             st.session_state.seleccion_activa = False
             st.rerun()
 
-    # Mostrar la predicción
+    # Si se pulsa Generar predicción, llamamos a la API
     if st.session_state.mostrar_principal:
-        with st.spinner("Calculando predicción..."):
-            response = get_prediction(
-                int(id_sensor_seleccionado),
-                fecha=fecha_elegida.isoformat() if fecha_elegida else None,
-                hora=hora_elegida,
-            )
+
+        # Animación Lottie 1 mientras la API responde
+        placeholder = st.empty()
+
+        with placeholder.container():
+
+            col1, col2, col3 = st.columns([1, 2, 1])
+
+            with col2:
+                st_lottie(
+                    lottie_gps1,
+                    height=180,
+                    key="loading_prediction"
+                )
+                st.markdown(
+                    "<p style='text-align:center'>Calculando predicción...</p>",
+                    unsafe_allow_html=True
+                    )
+
+        # Petición a la API del backend
+        response = get_prediction(
+            int(id_sensor_seleccionado),
+            fecha=fecha_elegida.isoformat() if fecha_elegida else None,
+            hora=hora_elegida,
+        )
+
+        # Borramos la animación cuando tenemos respuesta
+        placeholder.empty()
         
         if response.status_code == 200:
             data = response.json()
             nivel = data["nivel_congestion"]
             porcentaje = data["prediccion_ocupacion"]
 
+            # Tarjetas con métricas principales
             col1, col2 = st.columns(2)
 
             with col1:
@@ -306,6 +390,7 @@ if id_sensor_seleccionado:
 
             ultima_hora = data.get("ultima_hora_datos")
 
+            # Avisos sobre la calidad del dato (imputado vs real)
             if "fila_base" in data["campos_imputados"]:
                 st.warning(
                     "Predicción basada en patrones históricos para la fecha y hora seleccionadas."
@@ -315,7 +400,7 @@ if id_sensor_seleccionado:
                     f"Datos actualizados hasta las {ultima_hora}."
                 )
             
-            # MOSTRAR SECCIÓN ALTERNATIVA SOLO SI NO ESTÁ MARCADA LA OPCIÓN
+            # MOSTRAR SECCIÓN ALTERNATIVA SOLO SI ESTAMOS EN TIEMPO REAL
             if not usar_fecha_concreta:
                 st.divider()
                 st.subheader("Rutas alternativas")
@@ -340,6 +425,7 @@ if id_sensor_seleccionado:
                         lat_base = float(sensor_base["latitud"])
                         lon_base = float(sensor_base["longitud"])
 
+                        # Buscamos los N sensores más cercanos físicamente
                         n_cercanos = 8
                         candidatos = []
                         for s in sensores_distrito:
@@ -355,8 +441,27 @@ if id_sensor_seleccionado:
 
                         ids_sensores = [s["id_sensor"] for _, s in mas_cercanos]
 
-                        with st.spinner("Espere unos momentos mientras analizamos las mejores alternativas de movilidad..."):
-                            resp_batch = get_predictions_batch(ids_sensores)
+                        # Animación Lottie 2 para la búsqueda de alternativas
+                        placeholder_alt = st.empty()
+
+                        with placeholder_alt.container():
+
+                            col1, col2, col3 = st.columns([1, 2, 1])
+
+                            with col2:
+                                st_lottie(
+                                    lottie_gps2,
+                                    height=180,
+                                    key="loading_alternatives"
+                                )
+
+                                st.markdown(
+                                    "<p style='text-align:center'>Buscando las mejores alternativas...</p>",
+                                    unsafe_allow_html=True
+                                    )                       
+                                resp_batch = get_predictions_batch(ids_sensores)
+
+                        placeholder_alt.empty()
 
                         predicciones = {}
 
@@ -368,7 +473,8 @@ if id_sensor_seleccionado:
                                 for p in resp_batch.json()
                             }
                         resultados = []
-                       
+
+                        # Mapeamos los resultados devueltos por el endpoint batch
                         for dist, s in mas_cercanos:
                             id_s = s["id_sensor"]
                             nombre = s["nombre_calle"] or s["nombre_norm"] or f"Sensor {id_s}"
@@ -394,6 +500,7 @@ if id_sensor_seleccionado:
                                     "Confiable": "Sin datos",
                                 })
 
+                        # Ordenamos alternativas por menor ocupación prevista y menor distancia
                         df_resultados = (
                             pd.DataFrame(resultados)
                             .sort_values(
@@ -424,6 +531,7 @@ if id_sensor_seleccionado:
                             f"Estas son las mejores alternativas cercanas a **{nombre_mostrar(sensor_base)}**, ordenadas de menor a mayor nivel de congestión previsto."
                         )
 
+                        # Mostramos las TOP 3 alternativas destacadas en tarjetas
                         top3 = df_resultados.head(3)
 
                         for i, fila in top3.iterrows():
@@ -438,13 +546,20 @@ if id_sensor_seleccionado:
                         A {fila["Distancia"]} m
                         """)
                                 with col2:
+                                    valor_ocupacion = fila["Ocupación"]
+                                    texto_ocupacion = (
+                                        f"{valor_ocupacion:.0f}%"
+                                        if valor_ocupacion is not None
+                                        else "Sin datos"
+                                    )
                                     st.metric(
                                         "Ocupación",
-                                        f'{fila["Ocupación"]:.0f}%'
+                                        texto_ocupacion
                                     )
 
                         st.divider()
 
+                        # El resto de alternativas en un data_frame estilizado con barras de progreso
                         st.subheader("Más alternativas cercanas")
 
                         st.dataframe(
@@ -473,6 +588,7 @@ if id_sensor_seleccionado:
                             },
                         )
         else:
+            # Puntero de depuración por si revienta el backend
             st.error(f"Error API: {response.status_code}")
             st.code(response.text[:2000])
 else:
