@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # 1. Página Web Informativa (index.html con Nginx)
   web:
