@@ -223,3 +223,19 @@ venv/
 
 # Datos
 data/
+
+# Base de datos
+database/
+
+#Modelo
+models/
+
+*.pkl
+
+run_programador_local.bat
+
+# Cache
+cache/
+
+# Logs
+logs/
