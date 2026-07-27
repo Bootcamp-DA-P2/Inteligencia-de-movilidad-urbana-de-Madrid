@@ -17,6 +17,23 @@ from pathlib import Path
 
 import streamlit as st
 
+# NOTA sobre por qué cambié de enfoque:
+# Intentar DETECTAR el tema activo desde Python (st.context.theme,
+# st.get_option, etc.) no es fiable: ese código de módulo solo corre una vez
+# por proceso, y en tu instalación tampoco refleja el toggle manual.
+# En vez de detectar nada, uso la variable CSS "--text-color" que Streamlit
+# SÍ actualiza en vivo en el navegador cada vez que cambiás de tema (es la
+# misma variable que ya usan el label y el "objetivo" de la tarjeta KPI, por
+# eso esos dos sí te cambiaban bien). Con color-mix() el navegador la mezcla
+# con el azul de marca y se recalcula solo, sin Python de por medio.
+# Ver kpi_card() y la clase .madflow-kpi-value en apply_theme() más abajo.
+
+TEXT = "#0A2A4A"  # valor por defecto solo para PLOTLY_LAYOUT (ver nota abajo)
+
+font=dict(color=TEXT)
+title=dict(font=dict(color=TEXT))
+
+
 # --- Paleta central (única fuente de verdad) ---
 COLORS = {
     "azul_madrid": "#0B5FA5",
@@ -39,254 +56,393 @@ PLOTLY_SEQUENCE = [
 
 # Layout base para pasar a fig.update_layout(**PLOTLY_LAYOUT)
 PLOTLY_LAYOUT = dict(
-    font=dict(family="sans-serif", color=COLORS["azul_oscuro"], size=13),
-    title=dict(font=dict(color=COLORS["azul_oscuro"], size=16)),
+    font=dict(family="sans-serif", color=TEXT, size=13),
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
     colorway=PLOTLY_SEQUENCE,
-    margin=dict(l=10, r=10, t=50, b=10),
+    margin=dict(l=10, r=10, t=30, b=10),
     xaxis=dict(gridcolor="#E3EAF2", zerolinecolor="#E3EAF2"),
     yaxis=dict(gridcolor="#E3EAF2", zerolinecolor="#E3EAF2"),
     legend=dict(bgcolor="rgba(255,255,255,0.6)"),
 )
 
 
-def apply_theme() -> None:
-    """Inyecta el CSS global. Llamar al inicio de cada página, después de set_page_config."""
-    c = COLORS
-    st.markdown(f"""
+def apply_theme():
+
+    st.markdown("""
     <style>
-      :root {{
-        --azul-madrid: {c['azul_madrid']};
-        --azul-oscuro: {c['azul_oscuro']};
-        --violeta: {c['violeta']};
-        --teal-borde: {c['teal_borde']};
-        --fondo: {c['fondo']};
-      }}
 
-      /* Fondo general */
-      .stApp {{ background-color: var(--fondo); }}
-      .block-container {{ padding-top: 1.5rem; }}
+    /* Un poco de aire */
+    .block-container{
+        padding-top:1.5rem;
+    }
 
-      /* ---------- SIDEBAR AZUL ---------- */
-      [data-testid="stSidebar"] {{
-        background: linear-gradient(180deg, var(--azul-madrid) 0%, #0A4E88 100%);
-      }}
-      /* Todo el texto del sidebar en blanco */
-      [data-testid="stSidebar"] * {{ color: #FFFFFF !important; }}
-      /* Los links de navegación (st.navigation) */
-      [data-testid="stSidebarNav"] a {{
+    /* Sidebar corporativo */
+    [data-testid="stSidebar"]{
+        background:linear-gradient(180deg,#0B5FA5 0%,#0A4E88 100%);
+    }
+
+    [data-testid="stSidebar"] *{
+        color:white;
+    }
+
+    /* El texto DENTRO de los propios inputs (fecha, selects) va sobre un
+       fondo claro nativo del navegador, no sobre el azul del sidebar —
+       blanco ahí sería invisible. Lo dejamos oscuro y legible. */
+    [data-testid="stSidebar"] input,
+    [data-testid="stSidebar"] [data-baseweb="select"] *,
+    [data-testid="stSidebar"] [data-baseweb="input"] *{
+        color:#0A2A4A !important;
+    }
+
+    /* Página activa */
+    [data-testid="stSidebarNav"] a {
         border-radius: 10px;
-        margin: 2px 8px;
-        padding: 6px 10px;
-      }}
-      [data-testid="stSidebarNav"] a:hover {{
-        background-color: rgba(255,255,255,0.15);
-      }}
-      /* Página activa resaltada */
-      [data-testid="stSidebarNav"] a[aria-current="page"] {{
-        background-color: rgba(255,255,255,0.22);
-        font-weight: 700;
-      }}
-      /* Inputs del sidebar (fecha, selectbox) sobre fondo azul */
-      [data-testid="stSidebar"] [data-baseweb="select"] > div,
-      [data-testid="stSidebar"] input {{
-        background-color: rgba(255,255,255,0.95) !important;
-        color: var(--azul-oscuro) !important;
+        margin: 14px 8px !important;   /* antes 2px */
+        padding: 10px 10px !important; /* antes 6px */
+    }
+
+    /* Hover */
+    [data-testid="stSidebarNav"] a:hover{
+        background:rgba(255,255,255,.10);
+        border-radius:10px;
+    }
+
+    /* Logo del sidebar */
+    [data-testid="stSidebarHeader"]{
+        min-height:130px !important;
+        padding: 0 !important;
+
+        display:flex !important;
+        justify-content:center !important;
+        align-items:center !important;
+    }
+
+    [data-testid="stSidebarHeader"] > *{
+        width:100%;
+        display:flex !important;
+        justify-content:center !important;
+        align-items:center !important;
+    }
+
+    /*  LOGO /Efecto LOGO  */
+    [data-testid="stSidebarHeader"] img{
+        height:130px !important;
+        width:auto !important;
+        max-width:none !important;
+        max-height:none !important;
+        margin:0 auto !important;
+        display:block !important;        
+        filter: 
+            drop-shadow(0 -0.1px 0 rgba(255, 255, 255, 0.55)) !important;
+    }
+
+    /* Logo cuando el sidebar está colapsado */
+
+    [data-testid="stSidebarCollapsedControl"]{
+        min-height:70px !important;
+        display:flex !important;
+        justify-content:center !important;
+        align-items:center !important;
+        margin-top:10px !important;
+    }
+
+    [data-testid="stSidebarCollapsedControl"] img{
+        height:68px !important;
+        width:auto !important;
+        max-width:none !important;
+        max-height:none !important;
+        display:block !important;
+        margin:0 auto !important;        
+    }
+    
+    /* Botones */
+
+    div[data-testid="stButton"] button[kind="secondary"] {
+        background-color: #6c757d !important;
+        color: white !important;
+        border-color: #6c757d !important;
+    }
+    div[data-testid="stButton"] button[kind="secondary"]:hover {
+        background-color: #5a6268 !important;
+        border-color: #545b62 !important;
+    }
+
+    .stButton>button,
+    .stDownloadButton>button{
+
+        background:#7E57C2;
+        color:white;
+        border:none;
+        border-radius:10px;
+        font-weight:600;
+    }
+
+    .stButton>button:hover,
+    .stDownloadButton>button:hover{
+
+        background:#6848a8;
+        color:white;
+    }
+
+    .stButton>button:focus,
+    .stButton>button:active,
+    .stDownloadButton>button:focus,
+    .stDownloadButton>button:active{
+
+        background:#6848a8;
+        color:white;
+    }
+
+    /* Tabs */
+
+    button[data-baseweb="tab"]{
+
+        border-radius:10px;
+        font-weight:600;
+    }
+
+    button[data-baseweb="tab"]:hover{
+
+        background:rgba(126,87,194,.15);
+    }
+
+    button[data-baseweb="tab"][aria-selected="true"]{
+
+        background:#7E57C2 !important;
+        color:white !important;
+    }
+
+    /* KPI */
+
+    div[data-testid="stMetric"]{
+
+        border-radius:12px;
+        border:1px solid rgba(126,87,194,.25);
+        padding:15px;
+    }
+
+    /* Color del VALOR de la tarjeta KPI */
+
+    .madflow-kpi-value{
+        color: color-mix(in srgb, var(--text-color) 65%, #0B5FA5 35%);
+    }
+
+    /* Tarjetas KPI */
+
+    div:has(> div[class*="st-key-kpi_"]){
+        height:180px !important;
+    }
+
+    div[class*="st-key-kpi_"]{
+        border-radius:14px !important;
+        height:180px;
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        overflow:hidden;
+    }
+
+    /*Banner all views.*/
+    .st-emotion-cache-6c7yup{
+        margin-top: 0.1rem;
+    }
+
+    /* ABOUT_US*/
+
+    .db-table {
+        background-color: #ffffff;
+        border: 1.5px solid #bdc3c7;
         border-radius: 8px;
-      }}
-      [data-testid="stSidebar"] [data-baseweb="select"] * {{
-        color: var(--azul-oscuro) !important;
-      }}
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        position: relative;
+        height: 100%;
+    }
 
-      /* ---------- LOGO MADRID (st.logo) ---------- */
-      /* La única <img> del sidebar es el logo, así que lo agrandamos y centramos
-         sin depender del data-testid (que cambia entre versiones de Streamlit). */
-      [data-testid="stSidebarHeader"] {{
-        display: flex !important;
-        justify-content: center !important;
-        min-height: 120px !important;
-        padding-top: 28px !important;
-        padding-bottom: 20px !important;
-      }}
-      [data-testid="stSidebar"] img {{
-        height: 120px !important;
-        max-height: 120px !important;
-        width: auto !important;
-        margin: 32px auto 20px auto !important;
-        display: block !important;
-        object-fit: contain !important;
-        /* Tarjeta clara detrás del logo para dar contraste sobre el azul */
-        background: #EAF3FC !important;      /* celeste claro; poné #FFFFFF para blanco */
-        padding: 12px 18px !important;
-        border-radius: 16px !important;
-        box-shadow: 0 3px 12px rgba(0,0,0,0.18) !important;
-      }}
-
-      /* Espacio al fondo del sidebar para que el panel de filtros no quede pegado abajo */
-      [data-testid="stSidebarUserContent"] {{
-        padding-bottom: 36px !important;
-      }}
-
-      /* ---------- PANEL DE FILTROS (st.container(border=True, key="filtros")) ---------- */
-      /* .st-key-filtros es una clase estable que Streamlit genera desde la key del contenedor */
-      [data-testid="stSidebar"] .st-key-filtros {{
-        background: #EAF3FC !important;
-        border: 1px solid #BFE3E0 !important;
-        border-radius: 12px !important;
-        padding: 14px 14px 6px 14px !important;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.12) !important;
-      }}
-      /* Sobre fondo claro, el texto del panel debe ir oscuro (no blanco) */
-      [data-testid="stSidebar"] .st-key-filtros *:not(input) {{
-        color: {COLORS['azul_oscuro']} !important;
-      }}
-
-      /* ---------- TABS TIPO PÍLDORA (Streamlit react-aria: data-testid="stTab") ---------- */
-      .stTabs [role="tablist"] {{
-        gap: 10px;
-        background: transparent;
-        border-bottom: none;
-      }}
-      /* Cada pestaña — doble atributo para ganar especificidad vs. la regla de Streamlit */
-      [data-testid="stTab"][role="tab"] {{
-        background-color: #FFFFFF !important;
-        border: 1px solid var(--teal-borde) !important;
-        border-radius: 10px !important;
-        padding: 10px 36px !important;
-        margin-bottom: 4px !important;
-        font-weight: 600 !important;
-      }}
-      /* El espacio alrededor de la palabra lo da el margin del <p> interno.
-         Selector estable por data-testid (NO usar la clase .st-emotion-cache-*,
-         que cambia entre versiones de Streamlit). */
-      [data-testid="stTab"] [data-testid="stMarkdownContainer"] p {{
-        color: var(--azul-oscuro);
-        margin: 5px 16px !important;
-      }}
-      /* Pestaña activa: pastilla violeta, texto blanco */
-      [data-testid="stTab"][aria-selected="true"],
-      [data-testid="stTab"][data-selected="true"] {{
-        background-color: var(--violeta) !important;
-        border-color: var(--violeta) !important;
-      }}
-      [data-testid="stTab"][aria-selected="true"] [data-testid="stMarkdownContainer"] p,
-      [data-testid="stTab"][data-selected="true"] [data-testid="stMarkdownContainer"] p {{
-        color: #FFFFFF !important;
-      }}
-      /* Indicador inferior (react-aria): azul en vez del rojo por defecto */
-      .react-aria-SelectionIndicator {{
-        background-color: var(--azul-madrid) !important;
-      }}
-
-      /* ---------- TARJETAS KPI (st.metric) ---------- */
-      [data-testid="stMetric"] {{
-        background-color: #FFFFFF;
-        border: 1px solid var(--teal-borde);
-        border-radius: 14px;
-        padding: 16px 18px;
-        box-shadow: 0 2px 8px rgba(11,95,165,0.06);
-        min-height: 140px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-      }}
-      [data-testid="stMetricLabel"] {{
-        color: var(--azul-oscuro);
-        opacity: 0.75;
-        font-weight: 600;
-      }}
-      [data-testid="stMetricValue"] {{
-        color: var(--azul-oscuro);
+    .db-header {
+        background: linear-gradient(135deg, #f0f2f5 0%, #e4e7eb 100%);
+        padding: 7px 10px;
         font-weight: 700;
-      }}
+        font-size: 11px;
+        color: #2c3e50;
+        border-bottom: 1.5px solid #bdc3c7;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-      /* ---------- TÍTULOS ---------- */
-      h1, h2, h3 {{ color: var(--azul-oscuro); }}
+    .db-title-wrapper {
+        display: flex;
+        align-items: center;
+    }
 
-      /* ---------- BOTONES ---------- */
-      /* Estado normal: fondo morado, texto blanco (legible sobre morado) */
-      .stButton > button,
-      .stDownloadButton > button,
-      [data-testid="stFormSubmitButton"] button,
-      [data-testid="stSidebar"] .stButton > button {{
-        background-color: var(--violeta) !important;
-        color: #FFFFFF !important;
-        border: 1px solid var(--violeta) !important;
-        border-radius: 10px !important;
-        font-weight: 600 !important;
-      }}
-      .stButton > button *,
-      .stDownloadButton > button *,
-      [data-testid="stFormSubmitButton"] button *,
-      [data-testid="stSidebar"] .stButton > button * {{
-        color: #FFFFFF !important;
-      }}
-      /* Hover / click / foco: fondo blanco, texto morado (legible sobre blanco) */
-      .stButton > button:hover, .stButton > button:active, .stButton > button:focus, .stButton > button:focus-visible,
-      .stDownloadButton > button:hover, .stDownloadButton > button:active, .stDownloadButton > button:focus,
-      [data-testid="stFormSubmitButton"] button:hover, [data-testid="stFormSubmitButton"] button:active, [data-testid="stFormSubmitButton"] button:focus,
-      [data-testid="stSidebar"] .stButton > button:hover, [data-testid="stSidebar"] .stButton > button:active, [data-testid="stSidebar"] .stButton > button:focus {{
-        background-color: #FFFFFF !important;
-        color: var(--violeta) !important;
-        border-color: var(--violeta) !important;
-      }}
-      .stButton > button:hover *, .stButton > button:active *, .stButton > button:focus *,
-      .stDownloadButton > button:hover *, .stDownloadButton > button:active *, .stDownloadButton > button:focus *,
-      [data-testid="stFormSubmitButton"] button:hover *, [data-testid="stFormSubmitButton"] button:active *,
-      [data-testid="stSidebar"] .stButton > button:hover *, [data-testid="stSidebar"] .stButton > button:active *, [data-testid="stSidebar"] .stButton > button:focus * {{
-        color: var(--violeta) !important;
-      }}
+    .db-body {
+        padding: 8px 10px;
+        font-size: 11px;
+        color: #333;
+    }
+
+    .db-field {
+        display: flex;
+        align-items: center;
+        margin-bottom: 4px;
+        line-height: 1.2;
+    }
+
+    .db-type {
+        color: #8B263E;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 10px;
+        font-weight: bold;
+        margin-left: 4px;
+    }
+
+    .profile-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid #d0d0d0;
+        margin-right: 8px;
+        flex-shrink: 0;
+    }
+
+    /* Tabla de Hechos Central */
+
+    .fact-table {
+        background-color: #ffffff;
+        border: 2px solid #8B263E;
+        border-radius: 10px;
+        box-shadow: 0 8px 20px rgba(139,38,62,0.15);
+    }
+
+    .fact-header {
+        background: linear-gradient(135deg, #8B263E 0%, #5C182A 100%);
+        color: white;
+        padding: 8px;
+        font-weight: bold;
+        text-align: center;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    /* ... */
+
     </style>
     """, unsafe_allow_html=True)
 
 
 def header_banner(titulo: str, subtitulo: str = "") -> None:
-    """Banner superior con degradé azul, imitando la cabecera del dashboard."""
-    sub = f'<div style="font-size:15px;opacity:0.9;margin-top:4px;">{subtitulo}</div>' if subtitulo else ""
-    st.markdown(f"""
-    <div style="
-        background: linear-gradient(90deg, {COLORS['azul_oscuro']} 0%, {COLORS['azul_madrid']} 100%);
-        border-radius: 14px;
-        padding: 22px 28px;
-        margin-bottom: 20px;
-        color: #FFFFFF;">
-        <div style="font-size:26px;font-weight:800;">{titulo}</div>
-        {sub}
-    </div>
-    """, unsafe_allow_html=True)
+    """Banner superior con degradado azul."""
 
+    sub = ""
+    if subtitulo:
+        sub = f"""
+        <div style="
+            font-size:20px;
+            opacity:0.9;
+            margin-top:12px;
+        ">
+            {subtitulo}
+        </div>
+        """
 
-def kpi_card(label: str, value: str, positive: bool | None = None, objetivo: str = "") -> None:
+    st.markdown(
+        f"""
+        <div style="
+            background: linear-gradient(90deg, {COLORS['azul_oscuro']} 0%, {COLORS['azul_madrid']} 100%);
+            border-radius:18px;
+            padding:40px 42px;
+            margin-bottom:30px;
+            color:white;
+        ">
+            <div style="
+                font-size:40px;
+                font-weight:800;
+                line-height:1.2;
+            ">
+                {titulo}
+            </div>
+
+            {sub}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+def kpi_card(
+    label: str,
+    value: str,
+    positive: bool | None = None,
+    objetivo: str = "",
+    color: str | None = None,
+    trend: list | None = None,
+    key: str | None = None,
+) -> None:
     """
-    Tarjeta KPI personalizada (más control que st.metric).
-    positive=True -> verde, False -> rojo, None -> azul oscuro.
+    Tarjeta KPI con altura fija, borde de color a la izquierda y sparkline
+    opcional.
+
+    - positive=True/False sigue pintando el VALOR en verde/rojo (para KPIs
+      de variación). Si no se pasa, el valor usa color-mix con --text-color
+      (se adapta solo a claro/oscuro, ver nota de apply_theme).
+    - color: color de acento para el borde izquierdo y la línea del
+      sparkline. Por defecto usa violeta de marca. Pasale un COLORS[...]
+      distinto por tarjeta para que la fila no se vea todas iguales.
+    - trend: lista/serie de números para dibujar una mini línea de
+      tendencia debajo del valor (p.ej. la curva horaria del KPI).
+    - key: necesario si generás varias tarjetas en un bucle, para que
+      Streamlit no colisione claves internas.
     """
-    color = COLORS["azul_oscuro"]
+    accent = color or COLORS["violeta"]
+
+    valor_style = ""
     if positive is True:
-        color = COLORS["verde"]
+        valor_style = f"color:{COLORS['verde']};"
     elif positive is False:
-        color = COLORS["rojo"]
+        valor_style = f"color:{COLORS['rojo']};"
+    # si no hay positive, el color del valor lo pone la clase CSS
+    # .madflow-kpi-value (color-mix con --text-color, se adapta solo)
 
-    obj = f'<div style="font-size:12px;color:#7A8AA0;margin-top:6px;">{objetivo}</div>' if objetivo else ""
-    st.markdown(f"""
-    <div style="
-        background:#FFFFFF;
-        border:1px solid {COLORS['teal_borde']};
-        border-radius:14px;
-        padding:18px 20px;
-        box-shadow:0 2px 8px rgba(11,95,165,0.06);
-        text-align:center;
-        min-height:140px;
-        display:flex;
-        flex-direction:column;
-        justify-content:center;">
-        <div style="font-size:14px;color:{COLORS['azul_oscuro']};opacity:0.75;font-weight:600;">{label}</div>
-        <div style="font-size:30px;font-weight:800;color:{color};margin-top:8px;">{value}</div>
-        {obj}
-    </div>
-    """, unsafe_allow_html=True)
+    obj = f'<div style="font-size:12px;color:var(--text-color);opacity:.7;margin-top:4px;">{objetivo}</div>' if objetivo else ""
 
+    contenedor_key = key or f"kpi_{label}"
+    with st.container(border=True, key=contenedor_key):
+        st.markdown(f"""
+            <div style="border-left:4px solid {accent}; padding-left:12px;">
+                <div style="font-size:13px;font-weight:600;color:var(--text-color);opacity:.75;">
+                    {label}
+                </div>
+                <div class="madflow-kpi-value" style="font-size:28px;font-weight:700;margin-top:6px;{valor_style}">
+                    {value}
+                </div>
+                {obj}
+            </div>
+            """, unsafe_allow_html=True)
+
+        if trend:
+            import plotly.graph_objects as go
+            r, g, b = int(accent[1:3], 16), int(accent[3:5], 16), int(accent[5:7], 16)
+            fig = go.Figure(go.Scatter(
+                y=list(trend), mode="lines", line=dict(color=accent, width=2),
+                fill="tozeroy", fillcolor=f"rgba({r},{g},{b},0.15)",
+            ))
+            fig.update_layout(
+                height=48, margin=dict(l=0, r=0, t=6, b=0),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                xaxis=dict(visible=False), yaxis=dict(visible=False),
+                showlegend=False,
+            )
+            st.plotly_chart(
+                fig, width="stretch", config={"displayModeBar": False},
+                key=f"{contenedor_key}_spark",
+            )
+        else:
+            # Reserva el mismo hueco que ocupa un sparkline, para que las
+            # tarjetas sin trend midan igual que las que sí lo tienen.
+            st.markdown('<div style="height:48px;"></div>', unsafe_allow_html=True)
 
 def sidebar_footer_logo(image_path: str, height_px: int = 100) -> None:
     """

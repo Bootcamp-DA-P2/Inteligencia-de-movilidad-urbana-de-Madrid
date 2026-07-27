@@ -5,7 +5,8 @@ import pandas as pd
 from pathlib import Path
 
 URL = "https://datos.madrid.es/dataset/202087-0-trafico-intensidad/resource/202087-0-trafico-intensidad/download/202087-0-trafico-intensidad.xml"
-DB_PATH = Path("database/trafico.duckdb")
+BASE_DIR = Path(__file__).resolve().parents[2]
+DB_PATH = BASE_DIR / "database" / "trafico.duckdb"
 
 def consultar_y_guardar_crudo():
     respuesta = requests.get(URL)

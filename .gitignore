@@ -231,3 +231,11 @@ database/
 models/
 
 *.pkl
+
+run_programador_local.bat
+
+# Cache
+cache/
+
+# Logs
+logs/

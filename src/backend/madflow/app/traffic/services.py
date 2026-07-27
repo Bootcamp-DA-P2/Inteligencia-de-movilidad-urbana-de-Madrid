@@ -4,6 +4,7 @@ import joblib
 import pandas as pd
 import duckdb
 import datetime
+from functools import lru_cache
 
 UMBRAL_BAJO_MEDIO = 1.0
 UMBRAL_MEDIO_ALTO = 4.06
@@ -29,6 +30,7 @@ def _get_modelo():
         _modelo = joblib.load(MODELO_PATH)
     return _modelo
 
+@lru_cache(maxsize=5000)
 def predecir_sensor(id_sensor: int, fecha_hora: datetime.datetime | None = None) -> dict:
     fila, imputados = construir_fila_features(id_sensor, fecha_hora_objetivo=fecha_hora)
 
@@ -38,12 +40,30 @@ def predecir_sensor(id_sensor: int, fecha_hora: datetime.datetime | None = None)
     modelo = _get_modelo()
     prediccion = modelo.predict(X)[0]
 
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+
+    ultima = con.execute("""
+        SELECT id_fecha, hora
+        FROM fact_trafico_hora_live
+        ORDER BY id_fecha DESC, hora DESC
+        LIMIT 1
+    """).fetchone()
+
+    con.close()
+
+    ultima_hora_datos = (
+        f"{ultima[1]:02d}:00"
+        if ultima is not None
+        else None
+    )
+
     return {
         "id_sensor": id_sensor,
         "prediccion_ocupacion": float(prediccion),
         "nivel_congestion": clasificar_congestion(float(prediccion)),
         "campos_imputados": list(imputados.keys()),
         "confiable": len(imputados) == 0,
+        "ultima_hora_datos": ultima_hora_datos,
     }
 
 # Districto

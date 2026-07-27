@@ -3,12 +3,47 @@ import polars as pl
 import numpy as np
 import datetime
 from pathlib import Path
+from functools import lru_cache
 
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = ROOT / "database" / "trafico.duckdb"
 
 VARIABLES_LAG = ["intensidad_media", "ocupacion_media", "velocidad_media"]
 LAGS = [1, 24, 168]
+
+@lru_cache(maxsize=300)
+def cargar_historico_sensor(id_sensor):
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+
+    historico = con.execute("""
+        SELECT
+            id_sensor,
+            id_fecha,
+            hora,
+            intensidad_media,
+            intensidad_max,
+            intensidad_min,
+            ocupacion_media,
+            ocupacion_max,
+            velocidad_media,
+            velocidad_min,
+            num_mediciones,
+            num_error_E,
+            porcentaje_calidad
+        FROM fact_trafico_completa
+        WHERE id_sensor = ?
+        ORDER BY id_fecha, hora
+    """, [id_sensor]).pl()
+
+    metadata = con.execute("""
+        SELECT tipo_elem,distrito,latitud,longitud
+        FROM dim_sensor
+        WHERE id_sensor=?
+    """,[id_sensor]).fetchone()
+
+    con.close()
+
+    return historico, metadata
 
 
 def _duckdb_dia_semana(fecha: datetime.date) -> int:
@@ -33,22 +68,11 @@ def construir_fila_features(
     id_sensor: int,
     fecha_hora_objetivo: datetime.datetime | None = None,
 ) -> tuple[pl.DataFrame, dict]:
-    con = duckdb.connect(str(DB_PATH), read_only=True)
+    
     imputados = {}
 
-    # --- UNA sola consulta: todo el histórico del sensor ---
-    historico = con.execute("""
-        SELECT id_fecha, hora, intensidad_media, ocupacion_media, velocidad_media
-        FROM fact_trafico_completa
-        WHERE id_sensor = ?
-        ORDER BY id_fecha, hora
-    """, [id_sensor]).pl()
-
-    metadata_sensor = con.execute("""
-        SELECT tipo_elem, distrito, latitud, longitud FROM dim_sensor WHERE id_sensor = ?
-    """, [id_sensor]).fetchone()
-    con.close()
-
+    historico, metadata_sensor = cargar_historico_sensor(id_sensor)
+   
     if historico.height == 0 or metadata_sensor is None:
         raise ValueError(f"Sensor {id_sensor}: no hay ningún dato disponible.")
 
@@ -141,6 +165,7 @@ def construir_fila_features(
     df = pl.DataFrame([fila])
     return df, imputados
 
+from functools import lru_cache
 
 if __name__ == "__main__":
     fila, imputados = construir_fila_features(9841)

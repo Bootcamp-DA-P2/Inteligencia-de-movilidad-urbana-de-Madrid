@@ -30,12 +30,25 @@ def col_ocupacion(df: pd.DataFrame) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Filtros globales (en el sidebar, imitando el panel de slicers del mockup)
+# Filtros globales (en el sidebar)
 # ---------------------------------------------------------------------------
+FECHA_MINIMA = pd.Timestamp("2025-07-01").date()
+
 with st.sidebar.container(border=True, key="filtros"):
-    st.markdown("### 🔎 Filtros")
-    fecha_desde = st.date_input("Desde", value=pd.Timestamp("2025-07-01"))
-    fecha_hasta = st.date_input("Hasta", value=pd.Timestamp("2026-06-30"))
+    st.markdown("### :material/filter_alt: Filtros")
+    
+    fecha_desde = st.date_input(
+        "Desde", 
+        value=FECHA_MINIMA,
+        min_value=FECHA_MINIMA  # Deshabilita cualquier fecha anterior al 01/07/2025
+    )
+    
+    fecha_hasta = st.date_input(
+        "Hasta", 
+        value=pd.Timestamp("2026-06-30").date(),
+        min_value=fecha_desde   
+    )
+
 desde_str, hasta_str = fecha_desde.isoformat(), fecha_hasta.isoformat()
 
 # ---------------------------------------------------------------------------
@@ -51,22 +64,36 @@ df_m30 = pd.DataFrame({"hora": range(24)}).merge(df_m30, on="hora", how="left")
 m30_col = col_ocupacion(df_m30)
 
 # ---------------------------------------------------------------------------
-# KPIs (fila de tarjetas, calculados de los datos reales)
+# KPIs (fila de tarjetas, cada una con su color de acento + sparkline)
 # ---------------------------------------------------------------------------
 k1, k2, k3, k4 = st.columns(4)
 with k1:
     if df_m30[m30_col].notna().any():
         hora_pico = int(df_m30.loc[df_m30[m30_col].idxmax(), "hora"])
-        kpi_card("Hora de más tráfico (M-30)", f"A las {hora_pico}:00 h")
+        kpi_card(
+            "Hora de más tráfico (M-30)", f"{hora_pico}:00 h",
+            color=COLORS["violeta"], trend=df_m30[m30_col].tolist(), key="kpi_hora_pico",
+        )
     else:
-        kpi_card("Hora de más tráfico (M-30)", "s/d")
+        kpi_card("Hora de más tráfico (M-30)", "s/d", key="kpi_hora_pico")
 with k2:
-    kpi_card("Ocupación media M-30", f"{df_m30[m30_col].mean():.2f} %")
+    kpi_card(
+        "Ocupación media M-30", f"{df_m30[m30_col].mean():.2f} %",
+        color=COLORS["azul_linea"], trend=df_m30[m30_col].tolist(), key="kpi_ocupacion_m30",
+    )
 with k3:
     top = df_ranking.sort_values(rk_col, ascending=False).iloc[0]
-    kpi_card("Distrito más congestionado", top["nombre"], objetivo=f"{top[rk_col]:.2f} %")
+    kpi_card(
+        "Distrito más congestionado", top["nombre"], objetivo=f"{top[rk_col]:.2f} %",
+        color=COLORS["rojo"],
+        trend=df_ranking.sort_values(rk_col, ascending=False)[rk_col].head(10).tolist(),
+        key="kpi_top_distrito",
+    )
 with k4:
-    kpi_card("Distritos con datos", str(df_ranking["distrito"].nunique()))
+    kpi_card(
+        "Distritos con datos", str(df_ranking["distrito"].nunique()),
+        color=COLORS["verde"], key="kpi_num_distritos",
+    )
 
 st.write("")  # aire
 
@@ -87,14 +114,14 @@ with tab_resumen:
     fig_rk.update_traces(marker_color=colores)
     fig_rk.update_layout(**PLOTLY_LAYOUT, height=520)
     fig_rk.update_layout(xaxis_title="Ocupación media (%)", yaxis_title="")
-    st.plotly_chart(fig_rk, use_container_width=True)
+    st.plotly_chart(fig_rk, width="stretch")
 
 # ========================= TEMPORALIDAD =========================
 with tab_temporal:
     st.subheader("Análisis por distrito")
     id_distrito = st.selectbox(
         "Distrito", options=list(DISTRITOS.keys()),
-        format_func=lambda x: f"{x} - {DISTRITOS[x]}", key="distrito_dashboard",
+        format_func=lambda x: DISTRITOS[x], key="distrito_dashboard",
     )
 
     col1, col2 = st.columns(2)
@@ -104,11 +131,11 @@ with tab_temporal:
         df_hora = pd.DataFrame(get_patron_horario_distrito(id_distrito, desde_str, hasta_str).json())
         df_hora = pd.DataFrame({"hora": range(24)}).merge(df_hora, on="hora", how="left")
         h_col = col_ocupacion(df_hora)
-        fig_h = px.line(df_hora, x="hora", y=h_col, markers=False)
-        fig_h.update_traces(line_color=COLORS["azul_linea"], line_width=3)
+        fig_h = px.area(df_hora, x="hora", y=h_col)
+        fig_h.update_traces(line_color=COLORS["azul_linea"], line_width=3, fillcolor="rgba(46,134,222,0.15)")
         fig_h.update_layout(**PLOTLY_LAYOUT, height=340)
         fig_h.update_layout(xaxis_title="Hora del día (0-23)", yaxis_title="Ocupación (%)")
-        st.plotly_chart(fig_h, use_container_width=True)
+        st.plotly_chart(fig_h, width="stretch")
 
     with col2:
         st.markdown("**Promedio por día de la semana**")
@@ -123,13 +150,13 @@ with tab_temporal:
         fig_s.update_traces(marker_color=colores_sem)
         fig_s.update_layout(**PLOTLY_LAYOUT, height=340)
         fig_s.update_layout(xaxis_title="", yaxis_title="Ocupación (%)")
-        st.plotly_chart(fig_s, use_container_width=True)
+        st.plotly_chart(fig_s, width="stretch")
 
     st.divider()
 
     st.subheader("M-30: ocupación media por hora del día")
-    fig_m30 = px.line(df_m30, x="hora", y=m30_col, markers=False)
-    fig_m30.update_traces(line_color=COLORS["azul_linea"], line_width=3)
+    fig_m30 = px.area(df_m30, x="hora", y=m30_col)
+    fig_m30.update_traces(line_color=COLORS["azul_linea"], line_width=3, fillcolor="rgba(46,134,222,0.15)")
     fig_m30.update_layout(**PLOTLY_LAYOUT, height=360)
     fig_m30.update_layout(xaxis_title="Hora del día (0-23)", yaxis_title="Ocupación (%)")
-    st.plotly_chart(fig_m30, use_container_width=True)
+    st.plotly_chart(fig_m30, width="stretch")
