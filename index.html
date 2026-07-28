@@ -134,14 +134,47 @@
   .cta-note{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#7FA3C8}
 
   /* aviso cuando aún no hay URL configurada */
-  .toast{
-    position:fixed;left:50%;bottom:34px;transform:translate(-50%,18px);
-    background:#fff;color:var(--ink);font-size:14.5px;padding:13px 20px;border-radius:12px;
-    box-shadow:0 14px 40px rgba(7,26,51,.32);opacity:0;pointer-events:none;
-    transition:opacity .25s,transform .25s;z-index:99;max-width:88vw;text-align:center;
-  }
-  .toast.show{opacity:1;transform:translate(-50%,0)}
-  .toast code{font-family:var(--mono);font-size:13px;color:var(--lilac)}
+  /* aviso cuando aún no hay URL configurada */
+.toast{
+  position:fixed;
+  left:50%;
+  bottom:34px;
+  transform:translate(-50%,18px);
+  background:#fff;
+  color:var(--ink);
+  font-size:14.5px;
+  padding:13px 20px;
+  border-radius:12px;
+  box-shadow:0 14px 40px rgba(7,26,51,.32);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .25s,transform .25s;
+  z-index:99;
+  max-width:88vw;
+  text-align:center;
+}
+
+.toast.show{
+  opacity:1;
+  transform:translate(-50%,0);
+  pointer-events:auto;
+}
+
+.toast a{
+  color:var(--madrid);
+  font-weight:600;
+  text-decoration:none;
+}
+
+.toast a:hover{
+  text-decoration:underline;
+}
+
+.toast code{
+  font-family:var(--mono);
+  font-size:13px;
+  color:var(--lilac);
+}
 
   /* ---------- SECCIONES CLARAS ---------- */
   .kicker{font-size:clamp(1.9rem,3.7vw,2.9rem);font-weight:800;max-width:20ch}
@@ -400,25 +433,43 @@
    por ejemplo: const APP_URL = "https://madflow.streamlit.app";
    Mientras esté vacía, los botones avisan en vez de llevar a ningún sitio.
    ───────────────────────────────────────────────────────────── */
-const APP_URL = "";
+const PRESENTATION_MODE = false; // Cambia a false antes de subir a GitHub Pages.
 
-const toast = document.createElement('div');
-toast.className = 'toast';
-toast.innerHTML = 'Todavía no hay URL de la app. Añadidla en <code>APP_URL</code> dentro de index.html';
+const APP_URL = PRESENTATION_MODE
+  ? "http://localhost:8501"
+  : "";
+
+const DEMO_URL = "https://youtu.be/AIM1DB0v42M";
+
+const toast = document.createElement("div");
+toast.className = "toast";
+toast.innerHTML = `
+<strong>La aplicación no está disponible públicamente.</strong><br><br>
+Actualmente se ejecuta únicamente en un entorno local debido al volumen de datos utilizados.
+${
+  DEMO_URL
+    ? `<br><br><a href="${DEMO_URL}" target="_blank">▶ Ver demostración</a>`
+    : `<br><br>La demostración en vídeo estará disponible próximamente.`
+}
+`;
+
 document.body.appendChild(toast);
+
 let toastTimer;
 
-document.querySelectorAll('.js-app').forEach(el=>{
-  if(APP_URL){
-    el.href = APP_URL;
-    el.target = '_blank';
-    el.rel = 'noopener';
-  }else{
-    el.addEventListener('click', e=>{
+document.querySelectorAll(".js-app").forEach(btn => {
+  if (APP_URL) {
+    btn.href = APP_URL;
+    btn.target = "_blank";
+    btn.rel = "noopener";
+  } else {
+    btn.addEventListener("click", e => {
       e.preventDefault();
-      toast.classList.add('show');
+      toast.classList.add("show");
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(()=>toast.classList.remove('show'), 3600);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 6000);
     });
   }
 });
