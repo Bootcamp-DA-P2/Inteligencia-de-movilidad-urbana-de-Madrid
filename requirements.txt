@@ -1,28 +1,31 @@
-# --- Framework Principal ---
+# --- Core y Streamlit ---
 streamlit
 streamlit-carousel-uui
 streamlit-lottie
+streamlit-folium
 
-# --- Datos y Procesamiento Geoespacial ---
+# --- Datos y Red ---
 pandas
 numpy
 pyarrow
+requests
+python-dotenv
+
+# --- Geoespacial y Rutas (Madrid) ---
 geopandas
 shapely
 pyproj
 pyogrio
+osmnx
+folium
 
-# --- Modelos Analíticos y ML ---
-scikit-learn
-xgboost
-lightgbm
-
-# --- Visualización ---
+# --- Visualización y Gráficos ---
 plotly
 matplotlib
 seaborn
 altair
 
-# --- Red y Utilidades ---
-requests
-python-dotenv
+# --- ML / Modelos ---
+scikit-learn
+xgboost
+lightgbm
