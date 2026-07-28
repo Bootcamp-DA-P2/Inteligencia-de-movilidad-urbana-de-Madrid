@@ -59,6 +59,67 @@ El proyecto sigue una arquitectura de datos organizada y modular:
 ├── index.html                # Archivo de entrada web / presentación del proyecto
 ├── README.md                 # Documentación principal
 └── requirements.txt          # Listado de dependencias y librerías del proyecto 
+```
 
+## ⚙️ Instalación y Uso Local
+
+Para levantar este proyecto en tu entorno local, sigue estos pasos:
+
+1. **Clona el repositorio y accede a la carpeta:**
+   ```bash
+   git clone [https://github.com/Bootcamp-DA-P2/Inteligencia-de-movilidad-urbana-de-Madrid.git](https://github.com/Bootcamp-DA-P2/Inteligencia-de-movilidad-urbana-de-Madrid.git)
+   cd Inteligencia-de-movilidad-urbana-de-Madrid
+   ```
+
+2. **Crea y activa un entorno virtual:**
+   ```bash
+   python -m venv .venv
+   source .venv/Scripts/activate  # En Windows usa: .venv\Scripts\activate
+   ```
+   
+3. **Instala las dependencias necesarias:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configura las credenciales:**
+   * Duplica el archivo `.env-example` y renómbralo a `.env`, haz lo mismo con `.env.docker`.
+   * Rellena las variables necesarias en su interior.
+
+5. **Ejecuta Streamlit:**
+   ```bash
+   streamlit run src/frontend/main.py
+   ```
+
+### ⚙️ Despliegue con Docker
+
+Si prefieres trabajar con contenedores y evitar configuraciones manuales del entorno, asegúrate de tener Docker instalado y ejecuta los siguientes comandos:
+
+1. **Construye la imagen del proyecto:**
+   ```bash
+   docker compose build
+   ```
+
+2. **Levanta los contenedores:**
+   ```bash
+   docker compose up
+   ```
+
+## 🌿 Flujo de Trabajo y Ramas
+El desarrollo se ha organizado de forma colaborativa mediante control de versiones activo:
+* `main`: Rama de producción y versiones estables.
+* `develop`: Rama principal para la integración continua de características.
+* `feature/*`: Ramas secundarias para el desarrollo modular de componentes, ETL, interfaz y modelado.
+
+## 👩‍💻 Equipo de Desarrollo
+Proyecto desarrollado de forma colaborativa por el equipo MadFlow:
+* **Ana Paula Montiel** 
+* **Elena Suárez** 
+* **Irene Condado** 
+* **Jose Carlos de Santiago** 
+* **Daniel Luque** 
+
+---
+*Desarrollado como proyecto pedagógico para el Bootcamp de Data Analytics.*
 
 
